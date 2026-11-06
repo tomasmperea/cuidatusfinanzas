@@ -53,14 +53,14 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[]): Async<T> {
 }
 
 export function ErrorCard({ que, error, reload }: { que: string; error?: string; reload: () => void }) {
+  useEffect(() => { if (error) console.warn(`[ctf] No se pudo cargar ${que}:`, error); }, [error]);
   return (
-    <section class="err" role="alert" data-testid="error">
+    <section class="err" role="alert" data-testid="error" aria-label={`Error: ${que}`}>
       <div style="display:flex;gap:10px;align-items:flex-start">
         <Icon n="warn" color="var(--warn)" size={22} />
         <div>
-          <div style="font-weight:650">No pudimos cargar {que}.</div>
-          <div class="small">No mostramos números que no vengan del servidor. Probá de nuevo en un rato.</div>
-          {error && <div class="small" style="margin-top:4px">Detalle: {error}</div>}
+          <div style="font-weight:650">No pudimos cargar esta sección.</div>
+          <div class="small">Probá de nuevo en un rato.</div>
         </div>
       </div>
       <div><button class="btn sec" onClick={reload}><Icon n="retry" size={18} />Reintentar</button></div>

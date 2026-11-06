@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import type { Escenario } from './api';
+import { limpiarCache, onSesionInvalida, type Escenario } from './api';
 import { BotonSalir, Desafio, Enrolar, Login, useEtapa } from './auth';
 import { fmtDia, fmtMes, hoyAR } from './format';
 import { Icon, SheetHost } from './ui';
@@ -23,6 +23,7 @@ function tabDeHash(): Tab {
 
 export function App({ sinAuth = false }: { sinAuth?: boolean }) {
   const [etapa, refrescar] = useEtapa();
+  useEffect(() => onSesionInvalida(() => { limpiarCache(); refrescar(); }) as () => void, []);
   if (sinAuth) return <Tablero />;
   if (etapa === 'cargando') return <main class="auth" aria-busy="true"><div class="small">Cargando…</div></main>;
   if (etapa === 'login') return <Login listo={refrescar} />;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { api, type CalDia, type Calendario, type Escenario, type IngresosEgresos, type LiquidezComprometida } from '../api';
+import { api, type CalDia, type Calendario, type Escenario, type Kpis, type IngresosEgresos, type LiquidezComprometida } from '../api';
 import { fmtAbrev, fmtCompacto, fmtDDMM, fmtDia, fmtDiaCap, fmtExacto, fmtMes, fmtPct, nombreMes } from '../format';
 import { Load, Monto, OrigenChip, useAsync } from '../ui';
 import { SelectorEscenario } from './comunes';
@@ -8,12 +8,13 @@ const NOM: Record<string, string> = { central: 'central', conservador: 'conserva
 
 export function Mes({ esc, setEsc, diaInicial }: { esc: Escenario; setEsc: (e: Escenario) => void; diaInicial?: string }) {
   const cal = useAsync(() => api.calendario(esc), [esc]);
+  const k = useAsync(() => api.kpis(esc), [esc]);
   const ie = useAsync(() => api.ingresosEgresos(), []);
   const lc = useAsync(() => api.liquidezComprometida(), []);
   return (
     <>
       <div class="pad"><SelectorEscenario esc={esc} setEsc={setEsc} /></div>
-      <Load a={cal} que="el calendario" h={420}>{(c) => <CalendarioMes c={c} diaInicial={diaInicial} />}</Load>
+      <Load a={cal} que="el calendario" h={420}>{(c) => <CalendarioMes c={c} diaInicial={diaInicial} kpis={k.data?.escenario === c.escenario ? k.data : undefined} />}</Load>
       <Load a={ie} que="ingresos vs. egresos" h={220}>{(d) => <IngresosEgresosCard d={d} />}</Load>
       <Load a={lc} que="la liquidez comprometida" h={260}>{(d) => <Comprometida d={d} />}</Load>
     </>
@@ -25,7 +26,7 @@ function ultimoReal(c: Calendario): string | null {
   return r.length ? r[r.length - 1].fecha : null;
 }
 
-function CalendarioMes({ c, diaInicial }: { c: Calendario; diaInicial?: string }) {
+function CalendarioMes({ c, diaInicial, kpis }: { c: Calendario; diaInicial?: string; kpis?: Kpis }) {
   const [sel, setSel] = useState<string>(diaInicial && c.dias.some((d) => d.fecha === diaInicial) ? diaInicial : c.hoy);
   useEffect(() => { if (!c.dias.some((d) => d.fecha === sel)) setSel(c.dias[0]?.fecha); }, [c]);
   const primero = c.dias[0];
@@ -34,7 +35,7 @@ function CalendarioMes({ c, diaInicial }: { c: Calendario; diaInicial?: string }
   const dia = c.dias.find((d) => d.fecha === sel);
   return (
     <>
-      <section class="card" aria-label="Calendario del mes">
+      <section class="card" aria-label="Calendario del mes" style="padding:14px 10px">
         <div>
           <h2>{fmtMes(c.mes)}</h2>
           <div class="small">Saldo al cierre de cada día · {real ? `real hasta el ${fmtDDMM(real)}, después proyectado` : 'proyectado'} ({NOM[c.escenario]})</div>
@@ -49,9 +50,14 @@ function CalendarioMes({ c, diaInicial }: { c: Calendario; diaInicial?: string }
           <span><b aria-hidden="true">▲</b> Ingreso</span>
           <span><span class="sw" style="background:repeating-linear-gradient(45deg,var(--warn-line) 0 2px,var(--warn-soft) 2px 4px);border:1px solid var(--warn-line)" />! Bajo el piso ({fmtAbrev(c.piso)})</span>
         </div>
-        {c.resumen.primer_dia_bajo_piso && (
-          <div class="small num">Bajo el piso desde el {fmtDia(c.resumen.primer_dia_bajo_piso)}: {c.resumen.dias_bajo_piso} días este mes. Mínimo del mes: {fmtAbrev(c.resumen.minimo)} el {fmtDDMM(c.resumen.fecha_minimo)}.</div>
-        )}
+        {c.resumen.primer_dia_bajo_piso && (() => {
+          // Solo días proyectados (desde hoy), como el aviso de Inicio; los días reales pasados no cuentan.
+          const proy = c.dias.filter((d) => d.tipo === 'proyectado' && d.bajo_piso).length;
+          return (
+            <div class="small num" data-testid="resumen-piso">Bajo el piso desde el {fmtDia(c.resumen.primer_dia_bajo_piso)}: {proy} {proy === 1 ? 'día' : 'días'} en {nombreMes(c.mes)}
+              {kpis ? ` (${kpis.piso.dias_bajo_piso} en los próximos 90 días, como en Inicio)` : ''}. Mínimo del mes: <span class="nw">{fmtAbrev(c.resumen.minimo)}</span> el {fmtDDMM(c.resumen.fecha_minimo)}.</div>
+          );
+        })()}
       </section>
       {dia && <DiaSeleccionado d={dia} piso={c.piso} />}
     </>

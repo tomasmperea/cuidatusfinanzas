@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   fmtAbrev, fmtCompacto, fmtExacto, fmtEntero, fmtPct, fmtUSD,
-  fmtDDMM, fmtDia, fmtDiaCap, fmtMes, sumarDias, fmtFechaHora, hoyAR, diaSemana,
+  fmtDDMM, fmtDia, normalizarTexto, fmtDiaCap, fmtMes, sumarDias, fmtFechaHora, hoyAR, diaSemana,
 } from './format';
 
 const N = ' ';
@@ -94,5 +94,15 @@ describe('fechas', () => {
   it('hoy en AR (UTC−3)', () => {
     expect(hoyAR(new Date('2026-11-07T02:30:00Z'))).toBe('2026-11-06');
     expect(hoyAR(new Date('2026-11-07T03:30:00Z'))).toBe('2026-11-07');
+  });
+});
+
+describe('textos del servidor', () => {
+  it('guion → menos tipográfico y "mil" → k', () => {
+    expect(normalizarTexto('Abajo: Ocio -$66,33 k, Viajes -$61,79 k.')).toBe(`Abajo: Ocio ${M}$66,33${N}k, Viajes ${M}$61,79${N}k.`.replace(/\u00A0k/g, ' k'));
+    expect(normalizarTexto('Son $160 mil de eventuales')).toBe(`Son $160${N}k de eventuales`);
+    expect(normalizarTexto('mínimo -$149,02 k')).toBe(`mínimo ${M}$149,02 k`);
+    expect(normalizarTexto('del 26/10 al 01/11')).toBe('del 26/10 al 01/11');
+    expect(normalizarTexto('13 -> 8')).toBe('13 -> 8');
   });
 });

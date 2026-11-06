@@ -14,10 +14,37 @@ export const ESCENARIOS: Escenario[] = ['conservador', 'central', 'optimista'];
 
 type RpcFn = (name: string, args: Record<string, unknown>) => Promise<unknown>;
 
+// Avisos a la app cuando la sesión deja de servir (para volver a evaluar login / MFA).
+const oyentes = new Set<() => void>();
+export function onSesionInvalida(f: () => void) { oyentes.add(f); return () => oyentes.delete(f); }
+const avisar = () => oyentes.forEach((f) => f());
+
+export class SesionError extends Error {}
+
+function esErrorDeSesion(e: { code?: string; message?: string; status?: number } | null): boolean {
+  if (!e) return false;
+  return e.status === 401 || e.code === 'PGRST301' || e.code === 'PGRST303' || /jwt|token/i.test(e.message || '');
+}
+
+/** Sin aal2 no se llama a ningún RPC de datos. */
+async function exigirAal2() {
+  const { data, error } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (error || data.currentLevel !== 'aal2') { avisar(); throw new SesionError('Falta el segundo factor'); }
+}
+
 let rpcImpl: RpcFn = async (name, args) => {
-  const { data, error } = await supabase.rpc(name, args);
-  if (error) throw new Error(error.message || 'Error del servidor');
-  return data;
+  await exigirAal2();
+  let r = await supabase.rpc(name, args);
+  if (r.error && esErrorDeSesion({ ...r.error, status: r.status })) {
+    // Un solo intento de refrescar la sesión; si falla, se cierra y vuelve al login.
+    const { error } = await supabase.auth.refreshSession();
+    if (error) { await supabase.auth.signOut({ scope: 'local' }); avisar(); throw new SesionError('Sesión vencida'); }
+    await exigirAal2();
+    r = await supabase.rpc(name, args);
+    if (r.error && esErrorDeSesion({ ...r.error, status: r.status })) { await supabase.auth.signOut({ scope: 'local' }); avisar(); throw new SesionError('Sesión vencida'); }
+  }
+  if (r.error) throw new Error(r.error.message || 'Error del servidor');
+  return r.data;
 };
 
 /** Solo para `vite dev` con fixtures (ver main.tsx). */
@@ -109,6 +136,7 @@ export interface Snapshot {
 export interface Ajustes {
   estado: 'ok' | 'sin_disparo' | 'desactualizado' | 'sin_corrida' | string; fecha_corrida?: string;
   disparo?: { activo: boolean; motivo: string };
+  base?: { minimo: number; fecha_minimo: string; dias_bajo_piso: number; piso: number };
   ajustes?: Array<{ id: number; rank: number; titulo: string; texto: string; impacto?: { minimo_nuevo: number; dias_bajo_piso_nuevo: number } }>;
 }
 export interface Dashboard {

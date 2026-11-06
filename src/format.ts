@@ -124,3 +124,14 @@ export function hoyAR(now: Date = new Date()): string {
   const f = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
   return f.format(now);
 }
+
+/**
+ * Normaliza textos que arma el servidor: "-$" → "−$" y "$25 mil" → "$25 k".
+ * (El servidor redondea esos montos; acá no se inventan decimales.)
+ */
+export function normalizarTexto(t: string): string {
+  return t
+    .replace(/(^|[\s(:])-(\$|\d)/g, '$1\u2212$2')
+    .replace(/\$(\d+(?:[.,]\d+)?)\s?mil\b/g, '$$$1\u00A0k')
+    .replace(/\$(\d+(?:,\d+)?)\s?M\b/g, '$$$1\u00A0M');
+}

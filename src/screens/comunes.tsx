@@ -48,3 +48,5 @@ export function SelectorEscenario({ esc, setEsc }: { esc: Escenario; setEsc: (e:
     </div>
   );
 }
+
+export { normalizarTexto } from '../format';

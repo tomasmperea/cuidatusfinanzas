@@ -1,8 +1,8 @@
-import { api, type Compromiso, type Escenario, type Kpis } from '../api';
+import { api, type Ajustes, type Compromiso, type Escenario, type Kpis } from '../api';
 import { Curva90 } from '../chart';
 import { fmtAbrev, fmtDia, fmtEntero, fmtFechaHora, fmtExacto, fmtPct, fmtUSD, sumarDias } from '../format';
 import { Icon, Load, Monto, OrigenChip, useAsync } from '../ui';
-import { Frescura, SelectorEscenario } from './comunes';
+import { Frescura, normalizarTexto, SelectorEscenario } from './comunes';
 
 export function Inicio({ esc, setEsc, irA }: { esc: Escenario; setEsc: (e: Escenario) => void; irA: (t: string) => void }) {
   const kpis = useAsync(() => api.kpis(esc), [esc]);
@@ -26,7 +26,9 @@ export function Inicio({ esc, setEsc, irA }: { esc: Escenario; setEsc: (e: Escen
         )}
       </Load>
       {/* Ajustes preventivos: solo si el RPC devuelve ítems; máximo 3. Si falla, no se muestra nada inventado. */}
-      {aj.error ? <AjustesError reload={aj.reload} /> : aj.data && (aj.data.ajustes?.length ?? 0) > 0 && (
+      {esc !== 'central' ? (
+        <div class="pad small" data-testid="ajustes-central">Los ajustes se calculan sobre el escenario central.</div>
+      ) : aj.error ? <AjustesError reload={aj.reload} /> : aj.data && (aj.data.ajustes?.length ?? 0) > 0 && (
         <section class="card" aria-label="Ajustes preventivos" data-testid="ajustes">
           <div>
             <div class="eyebrow">Ajustes preventivos</div>
@@ -36,7 +38,7 @@ export function Inicio({ esc, setEsc, irA }: { esc: Escenario; setEsc: (e: Escen
           {aj.data.ajustes!.slice(0, 3).map((a, k) => (
             <div class="ajuste" key={a.id}>
               <span class="n" aria-hidden="true">{k + 1}</span>
-              <div><div class="t">{a.titulo}</div><div class="x">{a.texto}</div></div>
+              <div><div class="t">{normalizarTexto(a.titulo)}</div><div class="x num">{textoAjuste(a, aj.data!.base)}</div></div>
             </div>
           ))}
         </section>
@@ -46,6 +48,14 @@ export function Inicio({ esc, setEsc, irA }: { esc: Escenario; setEsc: (e: Escen
       </Load>
     </>
   );
+}
+
+/** Texto del ajuste: el tramo de impacto se arma desde los campos numéricos, con el formato de la app. */
+function textoAjuste(a: NonNullable<Ajustes['ajustes']>[number], base?: Ajustes['base']) {
+  const im = a.impacto;
+  const sinImpacto = a.texto.replace(/\s*Mínimo:.*$/s, '');
+  if (!im || !base) return normalizarTexto(a.texto);
+  return <>{normalizarTexto(sinImpacto)} Mínimo: <span class="nw">{fmtAbrev(base.minimo)}</span> → <span class="nw">{fmtAbrev(im.minimo_nuevo)}</span> · días bajo el piso: {base.dias_bajo_piso} → {im.dias_bajo_piso_nuevo}.</>;
 }
 
 function AjustesError({ reload }: { reload: () => void }) {
@@ -73,7 +83,7 @@ function Aviso({ k }: { k: Kpis }) {
       <div style="padding-top:2px"><Icon n="warn" color="var(--warn)" size={22} /></div>
       <div class="num" style="display:flex;flex-direction:column;gap:4px">
         <div class="tit">Aviso de valle: el {fmtDia(p.primer_dia_bajo_piso)} tu saldo perfora el piso de {fmtEntero(p.umbral)}</div>
-        <div class="det">Punto más bajo: <b class="warn">{fmtEntero(k.minimo_90d.saldo)}</b> el {fmtDia(k.minimo_90d.fecha)} · {p.dias_bajo_piso} {p.dias_bajo_piso === 1 ? 'día' : 'días'} bajo el piso.</div>
+        <div class="det">Punto más bajo: <b class="warn nw">{fmtEntero(k.minimo_90d.saldo)}</b> el {fmtDia(k.minimo_90d.fecha)} · {p.dias_bajo_piso} {p.dias_bajo_piso === 1 ? 'día' : 'días'} bajo el piso.</div>
       </div>
     </section>
   );
@@ -88,7 +98,7 @@ function KpiGrid({ k }: { k: Kpis }) {
       <div class="kpi">
         <div class="eyebrow">Liquidez hoy</div>
         <Monto n={k.liquidez_hoy} titulo="Liquidez hoy" cls={`disp val ${neg(k.liquidez_hoy)}`}
-          nota="Una sola cifra: ya incluye el descubierto." />
+          nota="Liquidez de hoy según el último backup." />
         <div class="sub num">Datos al {fmtFechaHora(k.backup.ultimo_movimiento)}</div>
       </div>
       <div class="kpi">

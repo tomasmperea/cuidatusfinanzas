@@ -26,7 +26,7 @@ async function ir(p, q, hash) {
 async function auditarTactiles(p, nombre) {
   const r = await p.$$eval('button, a, input', (els) => els.filter((e) => e.offsetParent !== null).map((e) => {
     const b = e.getBoundingClientRect(); return { t: (e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 30), w: Math.round(b.width), h: Math.round(b.height) };
-  }).filter((x) => x.h < 44 || x.w < 44));
+  }).filter((x) => x.h < 48 || x.w < 48));
   r.forEach((x) => chicos.add(`${nombre}: "${x.t}" ${x.w}×${x.h}`));
 }
 const shot = (p, n) => p.screenshot({ path: `${out}/${n}.png`, fullPage: true });
@@ -63,6 +63,6 @@ for (const scheme of ['light', 'dark']) {
   await p.context().close();
 }
 await browser.close();
-const err = errores.filter((e) => !e.includes('Fallo simulado') && !e.includes('net::ERR'));
+const err = errores.filter((e) => !e.includes('net::ERR'));
 console.log('errores de consola:', err.length, err.slice(0, 10));
-console.log('táctiles < 44px:', [...chicos].slice(0, 40));
+console.log('táctiles < 48px:', [...chicos].slice(0, 40));

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { supabase } from './api';
+import { limpiarCache, supabase } from './api';
 
 export type Etapa = 'cargando' | 'login' | 'enrolar' | 'mfa' | 'ok';
 
@@ -20,7 +20,7 @@ export function useEtapa(): [Etapa, () => void] {
   const refrescar = () => { etapaActual().then(set).catch(() => set('login')); };
   useEffect(() => {
     refrescar();
-    const { data } = supabase.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT') set('login'); });
+    const { data } = supabase.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_OUT') { limpiarCache(); set('login'); } });
     return () => data.subscription.unsubscribe();
   }, []);
   return [e, refrescar];

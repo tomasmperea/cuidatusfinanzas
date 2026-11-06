@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks';
 import { api, type Snapshot } from '../api';
 import { fmtAbrev, fmtDia, fmtEntero, fmtExacto, fmtPct, fmtUSD } from '../format';
 import { Icon, Load, Monto, Tri, useAsync } from '../ui';
+import { normalizarTexto } from './comunes';
 
 export function Semana() {
   const s = useAsync(() => api.snapshot(), []);
@@ -48,14 +49,14 @@ function SnapshotCard({ d }: { d: Snapshot }) {
             <li class="box" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;min-height:48px;padding:0 12px">
               <span style="font-size:13.5px"><span class="num muted">{fmtDia(c.fecha)} · </span>{c.tipo === 'fijo' ? 'Alquiler' : c.tarjeta || c.concepto}
                 {c.monto_usd > 0 && <><br /><span class="small num">+ {fmtUSD(c.monto_usd)} de la reserva</span></>}</span>
-              <Monto n={-c.monto_ars} titulo={`${c.tarjeta || c.concepto} · ${fmtDia(c.fecha)}`} cls="" />
+              <Monto n={c.monto_ars} titulo={`${c.tarjeta || c.concepto} · ${fmtDia(c.fecha)}`} cls="" />
             </li>
           ))}
         </ul>
         {d.proximo_valle && (
           <div class="alerta num">
             <Icon n="warn" size={18} color="var(--warn)" />
-            <span><b>Próximo valle:</b> {fmtDia(d.proximo_valle.fecha)}, {fmtEntero(d.proximo_valle.saldo)} (central).
+            <span><b>Próximo valle:</b> {fmtDia(d.proximo_valle.fecha)}, <span class="nw">{fmtEntero(d.proximo_valle.saldo)}</span> (central).
               {d.primer_dia_bajo_piso ? ` Perforás el piso el ${fmtDia(d.primer_dia_bajo_piso.fecha)}: ${d.primer_dia_bajo_piso.dias} días seguidos.` : ''}</span>
           </div>
         )}
@@ -63,7 +64,7 @@ function SnapshotCard({ d }: { d: Snapshot }) {
       <section class="card" aria-label="Texto para WhatsApp">
         <div class="cardhead"><h3>Texto del reporte</h3>
           <button class="linkbtn" onClick={copiar}><Icon n="copy" size={16} />&nbsp;{copiado ? 'Copiado' : 'Copiar'}</button></div>
-        <pre class="wa">{d.texto}</pre>
+        <pre class="wa">{normalizarTexto(d.texto)}</pre>
       </section>
     </>
   );
