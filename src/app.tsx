@@ -7,9 +7,11 @@ import { Inicio } from './screens/Inicio';
 import { Mes } from './screens/Mes';
 import { Compromisos } from './screens/Compromisos';
 import { Semana } from './screens/Semana';
+import { Caja } from './screens/Caja';
 
 const TABS = [
   { id: 'inicio', nombre: 'Inicio', icono: 'home' },
+  { id: 'caja', nombre: 'Caja', icono: 'billetera' },
   { id: 'mes', nombre: 'Mes', icono: 'cal' },
   { id: 'compromisos', nombre: 'Compromisos', icono: 'card' },
   { id: 'semana', nombre: 'Semana', icono: 'doc' },
@@ -45,6 +47,7 @@ function Tablero() {
   const diaHash = location.hash.split('/')[1];
   const head: Record<Tab, [string, string]> = {
     inicio: [`Hoy · ${fmtDia(hoy)}`, ''],
+    caja: ['Caja', ''],
     mes: ['Mes', ''],
     compromisos: ['Compromisos', ''],
     semana: ['Semana', ''],
@@ -58,6 +61,7 @@ function Tablero() {
         </header>
         <main class="screen" id="contenido">
           {tab === 'inicio' && <Inicio esc={esc} setEsc={setEsc} irA={irA} />}
+          {tab === 'caja' && <Caja />}
           {tab === 'mes' && <Mes esc={esc} setEsc={setEsc} diaInicial={diaHash} />}
           {tab === 'compromisos' && <Compromisos />}
           {tab === 'semana' && <Semana />}

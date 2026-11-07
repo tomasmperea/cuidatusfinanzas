@@ -144,7 +144,43 @@ export interface Dashboard {
   reserva_usd?: { saldo: number; comprometido_tc_90d: number; libre: number };
 }
 
+// ---------- Caja (registro de movimientos) ----------
+export type Flujo = 'gasto' | 'ingreso' | 'transferencia';
+export interface Subcat { id: number; nombre: string; grupo: string; flujo: Flujo; uso?: number }
+export interface CuentaCaja { id: number; nombre: string; moneda: 'ARS' | 'USD'; saldo: number | null }
+export interface MovCaja {
+  id: number; fecha: string; ts: string; monto: number; signo: number; moneda: string; cuenta_id: number;
+  subcat_id: number | null; editable: boolean; nota: string | null; titulo: string; grupo: string;
+  contra_cuenta_id: number | null; contra_monto: number | null;
+}
+export interface Pendiente {
+  id: number; fecha: string; ts: string | null; monto: number; signo: number; descripcion: string | null;
+  sugerencia: { tipo: Flujo; subcat_id?: number; nota?: string; destino_id?: number };
+}
+export interface Caja {
+  hoy: string; desde: string | null; activo: boolean;
+  liquidez: { saldo: number; var_mes: number };
+  cuentas: CuentaCaja[]; subcategorias: Subcat[]; atajos: Array<{ id: number; nombre: string; grupo: string }>;
+  tarjetas: string[]; movimientos: MovCaja[]; pendientes: Pendiente[];
+}
+export interface MovInput {
+  id?: number; tipo: Flujo; monto: number; cuenta_id: number; subcat_id?: number | null; destino_id?: number | null;
+  monto_destino?: number | null; fecha?: string; nota?: string | null; evid_id?: number | null;
+}
+type Guardado = { ok: boolean; id: number; liquidez: number };
+
+/** Escrituras: nunca pasan por la caché y la vacían (todo lo demás se recalcula). */
+async function escribir<T>(name: string, args: Record<string, unknown>): Promise<T> {
+  const r = (await rpcImpl(name, args)) as T;
+  limpiarCache();
+  return r;
+}
+
 export const api = {
+  caja: (cuenta: number) => rpcImpl('rpc_caja', { p_cuenta: cuenta }) as Promise<Caja>,
+  guardarMov: (m: MovInput) => escribir<Guardado>('rpc_mov_guardar', { p: m }),
+  borrarMov: (id: number, deshacer = false) => escribir<Guardado>('rpc_mov_borrar', { p_id: id, p_deshacer: deshacer }),
+  descartarPendiente: (id: number, deshacer = false) => escribir<{ ok: boolean }>('rpc_pendiente_descartar', { p_evid_id: id, p_deshacer: deshacer }),
   kpis: (e: Escenario) => rpc<Kpis>('rpc_kpis', { p_escenario: e }),
   forecast: (e: Escenario) => rpc<ForecastDia[]>('rpc_forecast', { p_escenario: e, p_horizonte: 90 }),
   calendario: (e: Escenario) => rpc<Calendario>('rpc_calendario_mes', { p_mes: null, p_escenario: e }),

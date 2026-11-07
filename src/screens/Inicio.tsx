@@ -12,7 +12,7 @@ export function Inicio({ esc, setEsc, irA }: { esc: Escenario; setEsc: (e: Escen
 
   return (
     <>
-      {!kpis.error && <Load a={kpis} que="los indicadores" h={60}>{(k) => <Frescura b={k.backup} />}</Load>}
+      {!kpis.error && <Load a={kpis} que="los indicadores" h={60}>{(k) => k.backup.archivo === 'app' ? null : <Frescura b={k.backup} />}</Load>}
       <div class="pad"><SelectorEscenario esc={esc} setEsc={setEsc} /></div>
       <Load a={kpis} que="los indicadores" h={300}>{(k) => <><Aviso k={k} /><KpiGrid k={k} /></>}</Load>
       <Load a={fc} que="la curva de 90 días" h={240}>
