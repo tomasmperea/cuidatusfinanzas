@@ -18,5 +18,20 @@ async function arrancar() {
 arrancar();
 
 if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  addEventListener('load', () => navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, { scope: import.meta.env.BASE_URL }));
+  // Al volver a la app (la PWA queda viva en segundo plano en Android) se busca una versión nueva;
+  // cuando el service worker nuevo toma el control, se recarga una vez para mostrarla.
+  const habiaControlador = !!navigator.serviceWorker.controller;
+  let recargado = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!habiaControlador || recargado) return;
+    recargado = true;
+    location.reload();
+  });
+  addEventListener('load', async () => {
+    const reg = await navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`,
+      { scope: import.meta.env.BASE_URL, updateViaCache: 'none' });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') reg.update().catch(() => {});
+    });
+  });
 }
