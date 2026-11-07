@@ -191,12 +191,12 @@ export function FilaCompromiso({ c, sinNombre }: { c: Compromiso; sinNombre?: bo
       <span class="num muted" style="flex:none;width:80px" aria-hidden="true">{fmtDia(c.fecha)}</span>
       {!sinNombre && <span class="ell" aria-hidden="true">{nombre}</span>}
       {sinNombre && <span style="flex:1" />}
-      {esPagado(c) && <span class="good" title="Pagado" aria-hidden="true"><Icon n="check" size={16} /></span>}
-      <span style="display:flex;flex-direction:column;align-items:flex-end">
+      {esPagado(c) && <span class="good small" aria-hidden="true" style="display:flex;align-items:center;gap:4px"><Icon n="check" size={16} />{(c as any).etiqueta_estado ?? 'Pagado'}</span>}
+      {!esPagado(c) && <span style="display:flex;flex-direction:column;align-items:flex-end">
         <Monto n={c.monto_ars} titulo={`${nombre} · ${fmtDia(c.fecha)}`} cls="monto"
           usd={c.monto_usd > 0 ? `+ ${fmtUSD(c.monto_usd)} de la reserva` : undefined} extra={detalleCompromiso(c)} />
         {c.monto_usd > 0 && <span class="small num" style="margin-top:-12px" aria-hidden="true">+ {fmtUSD(c.monto_usd)}</span>}
-      </span>
+      </span>}
     </li>
   );
 }
