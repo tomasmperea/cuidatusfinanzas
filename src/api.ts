@@ -137,7 +137,7 @@ export interface Ajustes {
   estado: 'ok' | 'sin_disparo' | 'desactualizado' | 'sin_corrida' | string; fecha_corrida?: string;
   disparo?: { activo: boolean; motivo: string };
   base?: { minimo: number; fecha_minimo: string; dias_bajo_piso: number; piso: number };
-  ajustes?: Array<{ id: number; rank: number; titulo: string; texto: string; impacto?: { minimo_nuevo: number; dias_bajo_piso_nuevo: number } }>;
+  ajustes?: Array<{ id: number; rank: number; titulo: string; texto: string; impacto?: { delta_minimo?: number; minimo_nuevo: number; dias_bajo_piso_nuevo: number } }>;
 }
 export interface Dashboard {
   compromisos_90d: { total_ars: number; total_usd: number; por_origen: Record<string, number> };

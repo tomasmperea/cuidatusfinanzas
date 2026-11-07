@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { limpiarCache, onSesionInvalida, type Escenario } from './api';
 import { BotonSalir, Desafio, Enrolar, Login, useEtapa } from './auth';
-import { fmtDia, fmtMes, hoyAR } from './format';
+import { fmtDia, hoyAR } from './format';
 import { Icon, SheetHost } from './ui';
 import { Inicio } from './screens/Inicio';
 import { Mes } from './screens/Mes';
@@ -44,16 +44,16 @@ function Tablero() {
   const hoy = hoyAR();
   const diaHash = location.hash.split('/')[1];
   const head: Record<Tab, [string, string]> = {
-    inicio: [`Hoy · ${fmtDia(hoy)}`, 'CuidaTusFinanzas'],
-    mes: ['Mes', fmtMes(hoy)],
-    compromisos: ['Compromisos', 'Próximos 90 días'],
-    semana: ['Semana', 'Reporte semanal'],
+    inicio: [`Hoy · ${fmtDia(hoy)}`, ''],
+    mes: ['Mes', ''],
+    compromisos: ['Compromisos', ''],
+    semana: ['Semana', ''],
   };
   return (
     <SheetHost>
       <div class="app">
         <header class="top">
-          <div style="display:flex;flex-direction:column"><h1 class="disp">{head[tab][0]}</h1><div class="sub">{head[tab][1]}</div></div>
+          <div style="display:flex;flex-direction:column"><h1 class="disp">{head[tab][0]}</h1>{head[tab][1] && <div class="sub">{head[tab][1]}</div>}</div>
           <BotonSalir icono={<Icon n="salir" size={22} />} />
         </header>
         <main class="screen" id="contenido">

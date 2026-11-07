@@ -9,7 +9,7 @@
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0E1116; --card: #171B22; --fg: #E8EBF0; --muted: #A3ABB7; --line: #2C333D; --grid: #262C35;
-    --chip: #222831; --accent: #8DB1FF; --accent-soft: #22324F; --accent-strong: #8DB1FF; --accent-mid: #3E5C99; --neutral-bar: #4A525E;
+    --chip: #222831; --accent: #8DB1FF; --accent-soft: #22324F; --accent-strong: #D2DFFF; --accent-mid: #3E5C99; --neutral-bar: #4A525E;
     --warn: #FFAE70; --warn-soft: #2B1D12; --warn-line: #5A3A22; --warn-mark: #FF9A4D;
     --good: #6FD89A; --bad: #FF8F84; --band: #22324F;
   }
@@ -61,9 +61,9 @@ main.screen { display: flex; flex-direction: column; gap: 12px; padding-bottom: 
 /* KPIs */
 .kpis { padding: 0 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .kpi { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.kpi .val { font-size: 23px; min-height: 48px; display: flex; align-items: center; white-space: nowrap; }
+.kpi .val { font-size: 22px; min-height: 48px; display: flex; align-items: center; white-space: nowrap; }
 .kpi .val small { font-size: 14px; font-weight: 500; }
-.kpi .sub { font-size: 12px; color: var(--muted); }
+.kpi .sub { font-size: 12.5px; color: var(--muted); }
 .trend { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; }
 
 /* gráfico */
@@ -157,3 +157,5 @@ nav.tabs button[aria-current="page"] .pill { background: var(--accent-soft); }
 .auth .msg { color: var(--bad); font-size: 13.5px; }
 button[data-testid="monto"]:not(.val) { justify-content: flex-end; }
 .nw { white-space: nowrap; }
+.fila1 { display: flex; align-items: center; gap: 10px; min-height: 52px; }
+.ell { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }

@@ -1,8 +1,6 @@
-import { useState } from 'preact/hooks';
 import { api, type Snapshot } from '../api';
-import { fmtAbrev, fmtDia, fmtEntero, fmtExacto, fmtPct, fmtUSD } from '../format';
+import { fmtAbrev, fmtDDMM, fmtDia, fmtEntero, fmtExacto, fmtPct, fmtUSD } from '../format';
 import { Icon, Load, Monto, Tri, useAsync } from '../ui';
-import { normalizarTexto } from './comunes';
 
 export function Semana() {
   const s = useAsync(() => api.snapshot(), []);
@@ -10,28 +8,30 @@ export function Semana() {
 }
 
 function SnapshotCard({ d }: { d: Snapshot }) {
-  const [copiado, setCopiado] = useState(false);
   const menos = d.desvio_neto < 0;
-  const copiar = async () => {
-    try { await navigator.clipboard.writeText(d.texto); setCopiado(true); setTimeout(() => setCopiado(false), 2000); } catch { /* sin permiso */ }
-  };
   return (
     <>
-      <section class="card" aria-label="Snapshot semanal">
-        <div>
-          <h2 class="disp" style="font-size:20px">Snapshot semanal</h2>
-          <div class="small num">{fmtDia(d.semana.desde)} – {fmtDia(d.semana.hasta)} · gastaste {fmtAbrev(d.gasto_semana)} (promedio {fmtAbrev(d.promedio_semanal)})</div>
+      <section class="card" aria-label="Gasto de la semana" style="gap:6px">
+        <div class="cardhead">
+          <h2 class="num">{fmtDDMM(d.semana.desde)} – {fmtDDMM(d.semana.hasta)}</h2>
+          <Monto n={d.gasto_semana} titulo="Gasto de la semana" cls="disp"
+            extra={[['Promedio semanal', fmtExacto(d.promedio_semanal)], ['Desvío', fmtExacto(d.desvio_neto, { signoMas: true })], ['Desvío %', fmtPct(d.desvio_neto_pct, { signoMas: true })]]} />
         </div>
-        <h3>Desvíos vs. tu promedio semanal</h3>
-        <div class="small" style="margin-top:-6px">Promedio de las 13 semanas anteriores · ▲ gastaste más · ▼ gastaste menos</div>
-        {d.desvios.length === 0 ? <div class="small">Sin desvíos relevantes esta semana.</div> : (
-          <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px">
+        <div class="num" style="display:flex;align-items:center;gap:6px">
+          <span class="sr">{menos ? 'Gastaste menos que tu promedio' : 'Gastaste más que tu promedio'}: </span>
+          <Tri up={!menos} color={menos ? 'var(--good)' : 'var(--bad)'} />
+          <b class={menos ? 'good' : 'bad'}>{fmtAbrev(d.desvio_neto, { signoMas: true })}</b>
+          <span class="muted">vs. promedio {fmtAbrev(d.promedio_semanal)}</span>
+        </div>
+        {d.desvios.length > 0 && (
+          <ul class="rows">
             {d.desvios.map((x) => {
               const mas = x.desvio > 0;
-              const col = mas ? 'var(--bad)' : 'var(--good)';
               return (
-                <li class="desv">
-                  <span style="display:flex;align-items:center;gap:8px"><Tri up={mas} color={col} /><span class="sr">{mas ? 'Gastaste más en' : 'Gastaste menos en'}</span>{x.categoria}</span>
+                <li class="fila1">
+                  <Tri up={mas} color={mas ? 'var(--bad)' : 'var(--good)'} />
+                  <span class="sr">{mas ? 'Más en' : 'Menos en'}</span>
+                  <span class="ell" style="font-weight:500">{x.categoria}</span>
                   <Monto n={x.desvio} signoMas titulo={`${x.categoria}: desvío semanal`} cls={mas ? 'bad' : 'good'}
                     extra={[['Esta semana', fmtExacto(x.real)], ['Promedio', fmtExacto(x.promedio)], ['Desvío', fmtPct(x.desvio_pct, { signoMas: true })]]} />
                 </li>
@@ -39,33 +39,29 @@ function SnapshotCard({ d }: { d: Snapshot }) {
             })}
           </ul>
         )}
-        {(d.desvios_descartados ?? 0) > 0 && <div class="small">+ {d.desvios_descartados} categorías con desvíos chicos (no se muestran)</div>}
-        <div class="num" style="font-size:15px">Desvío neto: <b class={menos ? 'good' : 'bad'}>{menos ? '▼ ' : '▲ '}{fmtAbrev(d.desvio_neto, { signoMas: true })}</b>{' '}
-          <span class="muted" style="font-size:13px">({fmtPct(d.desvio_neto_pct, { signoMas: true })}) · {menos ? 'gastaste menos que lo habitual' : 'gastaste más que lo habitual'}</span></div>
-
-        <h3 style="margin-top:6px">Compromisos · próximos 7 días · {fmtAbrev(d.compromisos_7d.total)}</h3>
-        <ul style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px">
-          {d.compromisos_7d.items.map((c) => (
-            <li class="box" style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;min-height:48px;padding:0 12px">
-              <span style="font-size:13.5px"><span class="num muted">{fmtDia(c.fecha)} · </span>{c.tipo === 'fijo' ? 'Alquiler' : c.tarjeta || c.concepto}
-                {c.monto_usd > 0 && <><br /><span class="small num">+ {fmtUSD(c.monto_usd)} de la reserva</span></>}</span>
-              <Monto n={c.monto_ars} titulo={`${c.tarjeta || c.concepto} · ${fmtDia(c.fecha)}`} cls="" />
-            </li>
-          ))}
+      </section>
+      <section class="card" aria-label="Próximos 7 días" style="gap:4px">
+        <h2>Próximos 7 días</h2>
+        <ul class="rows">
+          {d.compromisos_7d.items.map((c) => {
+            const nombre = c.tipo === 'fijo' ? 'Alquiler' : c.tarjeta || c.concepto;
+            return (
+              <li class="fila1">
+                <span class="sr">{`${nombre}, ${fmtDia(c.fecha)}: ${fmtExacto(c.monto_ars)}${c.monto_usd > 0 ? ` más ${fmtUSD(c.monto_usd)} de la reserva` : ''}`}</span>
+                <span class="num muted" style="flex:none;width:80px" aria-hidden="true">{fmtDia(c.fecha)}</span>
+                <span class="ell" aria-hidden="true">{nombre}</span>
+                <Monto n={c.monto_ars} titulo={`${nombre} · ${fmtDia(c.fecha)}`} usd={c.monto_usd > 0 ? `+ ${fmtUSD(c.monto_usd)} de la reserva` : undefined} />
+              </li>
+            );
+          })}
         </ul>
-        {d.proximo_valle && (
-          <div class="alerta num">
-            <Icon n="warn" size={18} color="var(--warn)" />
-            <span><b>Próximo valle:</b> {fmtDia(d.proximo_valle.fecha)}, <span class="nw">{fmtEntero(d.proximo_valle.saldo)}</span> (central).
-              {d.primer_dia_bajo_piso ? ` Perforás el piso el ${fmtDia(d.primer_dia_bajo_piso.fecha)}: ${d.primer_dia_bajo_piso.dias} días seguidos.` : ''}</span>
-          </div>
-        )}
       </section>
-      <section class="card" aria-label="Texto para WhatsApp">
-        <div class="cardhead"><h3>Texto del reporte</h3>
-          <button class="linkbtn" onClick={copiar}><Icon n="copy" size={16} />&nbsp;{copiado ? 'Copiado' : 'Copiar'}</button></div>
-        <pre class="wa">{normalizarTexto(d.texto)}</pre>
-      </section>
+      {d.proximo_valle && (
+        <div class="alerta num" style="margin:0 16px">
+          <Icon n="warn" size={18} color="var(--warn)" />
+          <span><b>Valle:</b> <span class="nw">{fmtEntero(d.proximo_valle.saldo)}</span> el {fmtDDMM(d.proximo_valle.fecha)}</span>
+        </div>
+      )}
     </>
   );
 }

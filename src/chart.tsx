@@ -77,15 +77,9 @@ export function Curva90({ esc, sel, con, opt, piso, minimo }: {
           </g>
         )}
       </svg>
-      <div class="legend" aria-hidden="true">
-        {banda && <span><span class="sw" style="background:var(--band)" />Rango conservador–optimista</span>}
-        <span><svg width="18" height="6"><line x1="0" x2="18" y1="3" y2="3" stroke="var(--accent)" stroke-width="2.5" /></svg>{NOMBRE[esc]}</span>
-        <span><svg width="18" height="6"><line x1="0" x2="18" y1="3" y2="3" stroke="var(--warn-mark)" stroke-width="1.5" stroke-dasharray="5 4" /></svg>Piso</span>
-        <span><svg width="12" height="12"><rect width="12" height="12" rx="3" fill="url(#hatch)" stroke="var(--warn-line)" /></svg>Bajo cero</span>
-      </div>
       {d && (
         <div class="tip num" aria-live="polite" data-testid="tip">
-          <div><b>{fmtDia(d.fecha)}</b> · saldo al cierre {fmtExacto(d.saldo_fin)}{d.saldo_fin < piso ? ' · bajo el piso' : ''}</div>
+          <div><b>{fmtDia(d.fecha)}</b> · {fmtExacto(d.saldo_fin)}{d.saldo_fin < piso ? <span class="sr"> (bajo el piso)</span> : ''}</div>
           {d.eventos?.filter((e) => e.tipo !== 'sin_backup').map((e) => (
             <div class="small">{e.concepto}: {fmtExacto((e.tipo === 'sueldo' || e.tipo === 'aguinaldo' ? 1 : -1) * Math.abs(e.monto), { signoMas: true })}{e.monto_usd ? ` + USD ${e.monto_usd.toLocaleString('es-AR')}` : ''}</div>
           ))}

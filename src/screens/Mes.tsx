@@ -1,63 +1,41 @@
 import { useEffect, useState } from 'preact/hooks';
-import { api, type CalDia, type Calendario, type Escenario, type Kpis, type IngresosEgresos, type LiquidezComprometida } from '../api';
+import { api, type CalDia, type Calendario, type Escenario, type IngresosEgresos, type LiquidezComprometida } from '../api';
 import { fmtAbrev, fmtCompacto, fmtDDMM, fmtDia, fmtDiaCap, fmtExacto, fmtMes, fmtPct, nombreMes } from '../format';
-import { Load, Monto, OrigenChip, useAsync } from '../ui';
+import { Load, Monto, useAsync } from '../ui';
 import { SelectorEscenario } from './comunes';
-
-const NOM: Record<string, string> = { central: 'central', conservador: 'conservador', optimista: 'optimista' };
+import { origenTexto } from './Inicio';
 
 export function Mes({ esc, setEsc, diaInicial }: { esc: Escenario; setEsc: (e: Escenario) => void; diaInicial?: string }) {
   const cal = useAsync(() => api.calendario(esc), [esc]);
-  const k = useAsync(() => api.kpis(esc), [esc]);
   const ie = useAsync(() => api.ingresosEgresos(), []);
   const lc = useAsync(() => api.liquidezComprometida(), []);
   return (
     <>
       <div class="pad"><SelectorEscenario esc={esc} setEsc={setEsc} /></div>
-      <Load a={cal} que="el calendario" h={420}>{(c) => <CalendarioMes c={c} diaInicial={diaInicial} kpis={k.data?.escenario === c.escenario ? k.data : undefined} />}</Load>
+      <Load a={cal} que="el calendario" h={420}>{(c) => <CalendarioMes c={c} diaInicial={diaInicial} />}</Load>
       <Load a={ie} que="ingresos vs. egresos" h={220}>{(d) => <IngresosEgresosCard d={d} />}</Load>
       <Load a={lc} que="la liquidez comprometida" h={260}>{(d) => <Comprometida d={d} />}</Load>
     </>
   );
 }
 
-function ultimoReal(c: Calendario): string | null {
-  const r = c.dias.filter((d) => d.tipo !== 'proyectado');
-  return r.length ? r[r.length - 1].fecha : null;
-}
-
-function CalendarioMes({ c, diaInicial, kpis }: { c: Calendario; diaInicial?: string; kpis?: Kpis }) {
+function CalendarioMes({ c, diaInicial }: { c: Calendario; diaInicial?: string }) {
   const [sel, setSel] = useState<string>(diaInicial && c.dias.some((d) => d.fecha === diaInicial) ? diaInicial : c.hoy);
   useEffect(() => { if (!c.dias.some((d) => d.fecha === sel)) setSel(c.dias[0]?.fecha); }, [c]);
-  const primero = c.dias[0];
-  const offset = primero ? primero.dia_semana - 1 : 0;
-  const real = ultimoReal(c);
+  const offset = c.dias[0] ? c.dias[0].dia_semana - 1 : 0;
   const dia = c.dias.find((d) => d.fecha === sel);
+  const proy = c.dias.filter((d) => d.tipo === 'proyectado' && d.bajo_piso).length;
   return (
     <>
       <section class="card" aria-label="Calendario del mes" style="padding:14px 10px">
-        <div>
-          <h2>{fmtMes(c.mes)}</h2>
-          <div class="small">Saldo al cierre de cada día · {real ? `real hasta el ${fmtDDMM(real)}, después proyectado` : 'proyectado'} ({NOM[c.escenario]})</div>
-        </div>
-        <div class="cal" role="grid" aria-label={`Calendario de ${nombreMes(c.mes)}`}>
+        <h2 style="padding-left:4px">{fmtMes(c.mes)}</h2>
+        <span class="sr">Saldo al cierre de cada día, escenario {c.escenario}. Días con rayado: bajo el piso de {fmtExacto(c.piso)}
+          {proy ? ` (${proy} días proyectados en ${nombreMes(c.mes)})` : ''}.</span>
+        <div class="cal" role="group" aria-label={`Días de ${nombreMes(c.mes)}`}>
           {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d) => <div class="dow" aria-hidden="true">{d}</div>)}
           {Array.from({ length: offset }).map(() => <div class="vacio" />)}
           {c.dias.map((d) => <Celda d={d} hoy={c.hoy} sel={sel === d.fecha} onSel={() => setSel(d.fecha)} />)}
         </div>
-        <div class="legend">
-          <span><b aria-hidden="true">▼</b> Egreso / compromiso</span>
-          <span><b aria-hidden="true">▲</b> Ingreso</span>
-          <span><span class="sw" style="background:repeating-linear-gradient(45deg,var(--warn-line) 0 2px,var(--warn-soft) 2px 4px);border:1px solid var(--warn-line)" />! Bajo el piso ({fmtAbrev(c.piso)})</span>
-        </div>
-        {c.resumen.primer_dia_bajo_piso && (() => {
-          // Solo días proyectados (desde hoy), como el aviso de Inicio; los días reales pasados no cuentan.
-          const proy = c.dias.filter((d) => d.tipo === 'proyectado' && d.bajo_piso).length;
-          return (
-            <div class="small num" data-testid="resumen-piso">Bajo el piso desde el {fmtDia(c.resumen.primer_dia_bajo_piso)}: {proy} {proy === 1 ? 'día' : 'días'} en {nombreMes(c.mes)}
-              {kpis ? ` (${kpis.piso.dias_bajo_piso} en los próximos 90 días, como en Inicio)` : ''}. Mínimo del mes: <span class="nw">{fmtAbrev(c.resumen.minimo)}</span> el {fmtDDMM(c.resumen.fecha_minimo)}.</div>
-          );
-        })()}
       </section>
       {dia && <DiaSeleccionado d={dia} piso={c.piso} />}
     </>
@@ -65,46 +43,43 @@ function CalendarioMes({ c, diaInicial, kpis }: { c: Calendario; diaInicial?: st
 }
 
 function Celda({ d, hoy, sel, onSel }: { d: CalDia; hoy: string; sel: boolean; onSel: () => void }) {
-  const egr = d.eventos.some((e) => e.signo < 0 && e.tipo !== 'sin_backup');
-  const ing = d.eventos.some((e) => e.signo > 0);
   const n = Number(d.fecha.slice(8, 10));
   const cls = [d.bajo_piso ? 'bajo' : '', d.fecha === hoy ? 'hoy' : '', d.tipo === 'proyectado' ? 'proy' : ''].join(' ');
-  const label = `${fmtDia(d.fecha)}${d.fecha === hoy ? ' (hoy)' : ''}: saldo ${fmtExacto(d.saldo_cierre)}` +
-    `${d.bajo_piso ? ', bajo el piso' : ''}${ing ? ', con ingreso' : ''}${egr ? ', con egreso' : ''}`;
+  const ev = d.eventos.filter((e) => e.tipo !== 'sin_backup');
+  const label = `${fmtDia(d.fecha)}${d.fecha === hoy ? ' (hoy)' : ''}: saldo ${d.tipo === 'proyectado' ? 'proyectado ' : ''}${fmtExacto(d.saldo_cierre)}` +
+    `${d.bajo_piso ? ', bajo el piso' : ''}${ev.length ? `, ${ev.length} ${ev.length === 1 ? 'movimiento' : 'movimientos'}` : ''}`;
   return (
     <button class={cls} aria-pressed={sel} aria-label={label} onClick={onSel} data-fecha={d.fecha}>
-      <span class="d">{n}{d.bajo_piso && <span class="warn" aria-hidden="true">!</span>}</span>
+      <span class="d">{n}</span>
       <span class="s num">{fmtCompacto(d.saldo_cierre)}</span>
-      <span class="mk" aria-hidden="true">{ing && <span class="good">▲</span>}{egr && <span class="warn">▼</span>}</span>
     </button>
   );
 }
 
 function DiaSeleccionado({ d, piso }: { d: CalDia; piso: number }) {
-  const tipo = d.tipo === 'real' ? 'Saldo real' : d.tipo === 'sin_backup' ? 'Saldo (sin backup, último real)' : 'Saldo proyectado';
+  const ev = d.eventos.filter((e) => e.tipo !== 'sin_backup');
   return (
-    <section class="card" aria-label="Día seleccionado" aria-live="polite" data-testid="dia">
+    <section class="card" aria-label="Día seleccionado" aria-live="polite" data-testid="dia" style="gap:4px">
       <div class="cardhead">
-        <div><div class="eyebrow">Día seleccionado</div><h3 class="disp" style="font-size:20px">{fmtDiaCap(d.fecha)}</h3></div>
-        {d.bajo_piso && <span class="chip" style="border-color:var(--warn-line);background:var(--warn-soft)">! Bajo el piso</span>}
+        <h2>{fmtDiaCap(d.fecha)}</h2>
+        <Monto n={d.saldo_cierre} titulo={`Saldo ${d.tipo === 'proyectado' ? 'proyectado' : 'real'} · ${fmtDia(d.fecha)}`}
+          cls={`disp ${d.saldo_cierre < piso ? 'warn' : ''}`}
+          extra={[['Ingresos del día', fmtExacto(d.ingresos, { signoMas: true })], ['Egresos del día (con gasto variable)', fmtExacto(-d.egresos)]]} />
       </div>
-      <div class="num">{tipo}: <Monto n={d.saldo_cierre} titulo={`${tipo} · ${fmtDia(d.fecha)}`} cls={`disp ${d.saldo_cierre < piso ? 'warn' : ''}`}
-        extra={[['Ingresos del día', fmtExacto(d.ingresos, { signoMas: true })], ['Egresos del día', fmtExacto(-d.egresos)]]} /></div>
-      {d.eventos.length > 0 ? (
+      {ev.length > 0 && (
         <ul class="rows">
-          {d.eventos.map((e) => (
-            <li style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;min-height:48px;padding:6px 0">
-              <span style="display:flex;flex-direction:column;gap:3px">
-                <span>{e.signo > 0 ? '▲ ' : '▼ '}{e.tipo === 'tarjeta' && e.tarjeta ? `${e.tarjeta} · resumen` : e.concepto}</span>
-                {e.monto_usd ? <span class="small num">+ USD {e.monto_usd.toLocaleString('es-AR', { minimumFractionDigits: 2 })} de la reserva</span> : null}
-                {e.origen && e.tipo !== 'sin_backup' && <span><OrigenChip origen={e.origen} estado={e.estado_ciclo} /></span>}
-              </span>
-              <span class={`num ${e.signo > 0 ? 'good' : ''}`} style="font-weight:650">{fmtExacto(e.signo * e.monto, { signoMas: true })}</span>
-            </li>
-          ))}
+          {ev.map((e) => {
+            const nombre = e.tipo === 'tarjeta' && e.tarjeta ? e.tarjeta : e.concepto;
+            return (
+              <li class="fila1">
+                <span class="sr">{`${e.signo > 0 ? 'Ingreso' : 'Egreso'}: ${nombre}, ${fmtExacto(e.signo * e.monto)}${e.monto_usd ? ` más USD ${e.monto_usd} de la reserva` : ''}. ${origenTexto(e.origen)}.`}</span>
+                <span class="ell" style="font-weight:500" aria-hidden="true">{nombre}</span>
+                <span class={`num ${e.signo > 0 ? 'good' : ''}`} style="font-weight:650" aria-hidden="true">{fmtAbrev(e.signo * e.monto, { signoMas: true })}</span>
+              </li>
+            );
+          })}
         </ul>
-      ) : <div class="small">Sin ingresos ni compromisos este día.</div>}
-      <div class="small num">Total del día: ingresos {fmtExacto(d.ingresos, { signoMas: true })} · egresos {fmtExacto(-d.egresos)} (incluye gasto variable{d.tipo === 'proyectado' ? ' estimado' : ''})</div>
+      )}
     </section>
   );
 }
@@ -112,48 +87,23 @@ function DiaSeleccionado({ d, piso }: { d: CalDia; piso: number }) {
 function IngresosEgresosCard({ d }: { d: IngresosEgresos }) {
   const t = d.total;
   const f = t.egresos_fijos;
-  const sueldo = d.detalle.find((x) => x.grupo === 'ingreso_recurrente');
-  const libreNeg = t.liquidez_libre < 0;
-  const conOtros = t.liquidez_libre_con_otros_ingresos;
-  const partes = [
-    f.tarjetas ? `tarjetas ${fmtAbrev(f.tarjetas)}` : '', f.vivienda ? `alquiler ${fmtAbrev(f.vivienda)}` : '',
-    f.servicios ? `servicios ${fmtAbrev(f.servicios)}` : '', f.prestamos ? `préstamos ${fmtAbrev(f.prestamos)}` : '',
-  ].filter(Boolean).join(' · ');
-  const max = Math.max(t.ingresos_recurrentes.total, f.total + t.gasto_variable, 1);
+  const filas: Array<[string, number, string, Array<[string, string]>]> = [
+    ['Ingresos', t.ingresos_recurrentes.total, 'good', [['Sueldo', fmtExacto(t.ingresos_recurrentes.sueldo)], ['Aguinaldo', fmtExacto(t.ingresos_recurrentes.aguinaldo)]]],
+    ['Fijos', -f.total, '', [['Tarjetas', fmtExacto(f.tarjetas)], ['Vivienda', fmtExacto(f.vivienda)], ['Servicios', fmtExacto(f.servicios)], ['Préstamos', fmtExacto(f.prestamos)]]],
+    ['Variable', -t.gasto_variable, '', [['Real', fmtExacto(d.real.gasto_variable)], ['Proyectado', fmtExacto(d.proyectado.gasto_variable)]]],
+  ];
   return (
-    <section class="card" aria-label="Ingresos vs. egresos">
-      <div>
-        <h2>Ingresos vs. egresos</h2>
-        <div class="small">{nombreMes(d.mes).replace(/^./, (c) => c.toUpperCase())} · {d.estado_mes === 'en_curso' ? `real hasta el ${fmtDDMM(d.real_hasta)} + proyectado` : d.estado_mes === 'cerrado' ? 'cerrado' : 'proyectado'}{d.escenario ? ` · escenario ${d.escenario}` : ''}</div>
-      </div>
-      <div role="img" aria-label={`Ingresos ${fmtAbrev(t.ingresos_recurrentes.total)}; egresos fijos ${fmtAbrev(f.total)} y gasto variable ${fmtAbrev(t.gasto_variable)}`} style="display:flex;flex-direction:column;gap:4px">
-        <div class="stack"><span style={{ flex: `0 0 ${(100 * t.ingresos_recurrentes.total) / max}%`, background: 'var(--good)' }} /></div>
-        <div class="stack">
-          <span style={{ flex: `0 0 ${(100 * f.total) / max}%`, background: 'var(--accent-strong)' }} />
-          <span style={{ flex: `0 0 ${(100 * t.gasto_variable) / max}%`, background: 'var(--accent-mid)' }} />
-        </div>
-      </div>
-      <div class="kv num">
-        <span class="k"><span class="sw" style="background:var(--good)" /> ▲ Ingresos recurrentes</span>
-        <Monto n={t.ingresos_recurrentes.total} titulo="Ingresos recurrentes del mes" cls="v"
-          extra={[['Sueldo', fmtExacto(t.ingresos_recurrentes.sueldo)], ['Aguinaldo', fmtExacto(t.ingresos_recurrentes.aguinaldo)]]} />
-        <span class="d">{sueldo ? `${sueldo.concepto} del ${fmtDDMM(sueldo.fecha)}${sueldo.fuente === 'proyectado' ? ' (proyectado)' : ''}` : 'Sueldo y aguinaldo'}</span>
-        <span class="k"><span class="sw" style="background:var(--accent-strong)" /> ▼ Egresos fijos</span>
-        <Monto n={f.total} titulo="Egresos fijos del mes" cls="v"
-          extra={[['Tarjetas', fmtExacto(f.tarjetas)], ['Vivienda', fmtExacto(f.vivienda)], ['Servicios', fmtExacto(f.servicios)], ['Préstamos', fmtExacto(f.prestamos)],
-            ...(f.tarjetas_usd ? [['Tarjetas en USD (de la reserva)', `USD ${f.tarjetas_usd.toLocaleString('es-AR')}`] as [string, string]] : [])]} />
-        <span class="d">{partes || 'Sin egresos fijos'}</span>
-        <span class="k"><span class="sw" style="background:var(--accent-mid)" /> ▼ Gasto variable{d.estado_mes !== 'cerrado' ? ' estimado' : ''}</span>
-        <Monto n={t.gasto_variable} titulo="Gasto variable del mes" cls="v"
-          extra={[['Real', fmtExacto(d.real.gasto_variable)], ['Proyectado', fmtExacto(d.proyectado.gasto_variable)]]} />
-        <span class="d" />
-      </div>
-      <div style="border-top:1px solid var(--line);padding-top:8px" class="kv num">
-        <span class="k" style="font-weight:650">Liquidez libre</span>
-        <Monto n={t.liquidez_libre} titulo="Liquidez libre del mes" cls={`v disp ${libreNeg ? 'warn' : 'good'}`}
-          extra={[['Otros ingresos', fmtExacto(t.otros_ingresos)], ['Con otros ingresos', fmtExacto(conOtros)]]} />
-        <span class="d">Ingresos recurrentes − fijos − variable. Con otros ingresos ({fmtAbrev(t.otros_ingresos)}) queda en {fmtAbrev(conOtros)}.{conOtros < 0 ? ' Lo cubre la liquidez que ya tenés.' : ''}</span>
-      </div>
+    <section class="card" aria-label={`Ingresos vs. egresos de ${nombreMes(d.mes)}, real hasta el ${fmtDDMM(d.real_hasta)} más proyectado`} style="gap:4px">
+      <h2>Ingresos vs. egresos</h2>
+      <ul class="rows">
+        {filas.map(([k, v, c, ex]) => (
+          <li class="fila1"><span class="ell" style="font-weight:500">{k}</span><Monto n={v} titulo={k} cls={c} signoMas extra={ex} /></li>
+        ))}
+        <li class="fila1"><span class="ell">Libre</span>
+          <Monto n={t.liquidez_libre} titulo="Liquidez libre del mes" cls={`disp ${t.liquidez_libre < 0 ? 'warn' : 'good'}`}
+            extra={[['Otros ingresos', fmtExacto(t.otros_ingresos)], ['Con otros ingresos', fmtExacto(t.liquidez_libre_con_otros_ingresos)]]} />
+        </li>
+      </ul>
     </section>
   );
 }
@@ -162,37 +112,25 @@ const COLOR: Record<string, string> = {
   vivienda: 'var(--neutral-bar)', prestamos: 'var(--muted)', servicios: 'var(--accent-mid)',
   cuotas_tarjeta: 'var(--accent-strong)', tarjeta_resto: 'var(--accent)', disponible_libre: 'var(--good)',
 };
-const SUB: Record<string, string> = {
-  vivienda: 'Alquiler y expensas', prestamos: 'Préstamos activos', servicios: 'Real + recurrentes del mes',
-  cuotas_tarjeta: 'De los resúmenes del mes', tarjeta_resto: 'Consumos en 1 pago, débitos e impuestos', disponible_libre: 'Antes del gasto variable',
-};
+const CORTO: Record<string, string> = { tarjeta_resto: 'Tarjeta · resto', disponible_libre: 'Disponible', cuotas_tarjeta: 'Cuotas' };
 
 function Comprometida({ d }: { d: LiquidezComprometida }) {
   return (
-    <section class="card" aria-label="Liquidez comprometida">
-      <div>
-        <h2>Liquidez comprometida</h2>
-        <div class="small num">Del ingreso mensual ({fmtAbrev(d.ingreso_mensual)}) te quedan libres {fmtAbrev(d.disponible_libre)} antes del gasto variable.
-          {d.proximo_cobro ? ` Próximo cobro: ${fmtDia(d.proximo_cobro.fecha)}.` : ''}</div>
-      </div>
-      <div class="stack" role="img" aria-label="Reparto del ingreso mensual">
+    <section class="card" aria-label="Liquidez comprometida" style="gap:6px">
+      <div class="cardhead"><h2>Liquidez comprometida</h2><span class="small num">de {fmtAbrev(d.ingreso_mensual)}</span></div>
+      <div class="stack" aria-hidden="true">
         {d.grupos.filter((g) => g.monto > 0).map((g) => <span style={{ flex: `${Math.max(g.pct_ingreso, 0)} 1 0`, background: COLOR[g.grupo] || 'var(--muted)' }} />)}
       </div>
       <ul class="rows">
-        {d.grupos.map((g) => (
-          <li style="display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;min-height:52px">
-            <span class="sw" style={{ background: COLOR[g.grupo] || 'var(--muted)' }} />
-            <span style="display:flex;flex-direction:column"><span>{g.grupo === 'tarjeta_resto' ? 'Tarjeta · resto' : g.grupo === 'disponible_libre' ? 'Disponible libre' : g.nombre}</span>
-              <span class="small">{g.monto === 0 && g.grupo === 'prestamos' ? 'Sin préstamos activos' : SUB[g.grupo] || ''}</span></span>
-            <span style="display:flex;flex-direction:column;align-items:flex-end">
-              <Monto n={g.monto} titulo={g.nombre} cls="" nota={g.nota} extra={[['Del ingreso', fmtPct(g.pct_ingreso)]]} />
-              <span class="small num" style="margin-top:-10px">{fmtPct(g.pct_ingreso)}</span>
-            </span>
+        {d.grupos.filter((g) => g.monto !== 0).map((g) => (
+          <li class="fila1">
+            <span class="sw" aria-hidden="true" style={{ background: COLOR[g.grupo] || 'var(--muted)' }} />
+            <span class="ell" style="font-weight:500">{CORTO[g.grupo] || g.nombre}</span>
+            <span class="small num" aria-hidden="true">{fmtPct(g.pct_ingreso)}</span>
+            <Monto n={g.monto} titulo={g.nombre} nota={g.nota} extra={[['Del ingreso', fmtPct(g.pct_ingreso)]]} />
           </li>
         ))}
       </ul>
-      <div class="small num">Total tarjetas del mes: {fmtAbrev(d.tarjeta_total.monto)}{d.tarjeta_total.usd ? ` + USD ${d.tarjeta_total.usd.toLocaleString('es-AR')} de la reserva` : ''}.
-        {d.cuotas_futuras ? ` Cuotas que vencen después: ${fmtAbrev(d.cuotas_futuras.monto)} (hasta ${fmtDDMM(d.cuotas_futuras.hasta)}/${d.cuotas_futuras.hasta.slice(2, 4)}).` : ''}</div>
     </section>
   );
 }
