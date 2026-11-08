@@ -57,8 +57,6 @@ for (const scheme of ['light', 'dark']) {
   if (scheme === 'light') {
     await ir(p, '&error=all', 'inicio');
     await shot(p, `error-${s}`);
-    await ir(p, '&backup_dias=6', 'inicio');
-    await p.screenshot({ path: `${out}/backup-viejo-${s}.png`, clip: { x: 0, y: 0, width: 412, height: 200 } });
   }
   await p.context().close();
 }

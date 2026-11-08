@@ -2,7 +2,7 @@ import { api, type Ajustes, type Compromiso, type Escenario, type Kpis } from '.
 import { Curva90 } from '../chart';
 import { fmtAbrev, fmtDDMM, fmtDia, fmtEntero, fmtExacto, fmtPct, fmtUSD, normalizarTexto, sumarDias } from '../format';
 import { Icon, Load, Monto, useAsync } from '../ui';
-import { Frescura, SelectorEscenario } from './comunes';
+import { SelectorEscenario } from './comunes';
 
 export function Inicio({ esc, setEsc, irA }: { esc: Escenario; setEsc: (e: Escenario) => void; irA: (t: string) => void }) {
   const kpis = useAsync(() => api.kpis(esc), [esc]);
@@ -12,7 +12,6 @@ export function Inicio({ esc, setEsc, irA }: { esc: Escenario; setEsc: (e: Escen
 
   return (
     <>
-      {!kpis.error && <Load a={kpis} que="los indicadores" h={60}>{(k) => k.backup.archivo === 'app' ? null : <Frescura b={k.backup} />}</Load>}
       <div class="pad"><SelectorEscenario esc={esc} setEsc={setEsc} /></div>
       <Load a={kpis} que="los indicadores" h={300}>{(k) => <><Aviso k={k} /><KpiGrid k={k} /></>}</Load>
       <Load a={fc} que="la curva de 90 días" h={240}>
@@ -97,8 +96,7 @@ function KpiGrid({ k }: { k: Kpis }) {
     <section class="kpis" aria-label="Indicadores">
       <div class="kpi">
         <div class="eyebrow">Liquidez</div>
-        <Monto n={k.liquidez_hoy} titulo="Liquidez hoy" cls={`disp val ${k.liquidez_hoy < 0 ? 'warn' : ''}`}
-          extra={[['Datos al', fmtDDMM(k.backup.ultimo_movimiento || k.hoy)]]} />
+        <Monto n={k.liquidez_hoy} titulo="Liquidez hoy" cls={`disp val ${k.liquidez_hoy < 0 ? 'warn' : ''}`} />
       </div>
       <div class="kpi">
         <div class="eyebrow">Burn rate</div>

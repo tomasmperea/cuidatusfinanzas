@@ -41,11 +41,6 @@ main.screen { display: flex; flex-direction: column; gap: 12px; padding-bottom: 
 .small { font-size: 12px; color: var(--muted); }
 
 /* chip de frescura */
-.fresh { min-height: 48px; width: 100%; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); color: var(--muted); font-size: 13px; }
-.fresh .t { color: var(--fg); }
-.fresh.viejo { background: var(--warn-soft); border-color: var(--warn-line); }
-.fresh.viejo .t b { color: var(--warn); }
-.fresh .end { margin-left: auto; display: flex; }
 
 /* segmentado */
 .seg { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 28px; background: var(--card); }

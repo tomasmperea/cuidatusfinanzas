@@ -103,7 +103,7 @@ export function sumarDias(iso: string, n: number): string {
 
 /**
  * "dd/mm hh:mm" de un timestamp. Si trae huso (Z o ±hh:mm) se pasa a hora AR;
- * si no trae (hora local de Expenless), se muestra tal cual.
+ * si no trae (hora local), se muestra tal cual.
  */
 export function fmtFechaHora(ts: string | null | undefined): string {
   if (!ts) return '—';

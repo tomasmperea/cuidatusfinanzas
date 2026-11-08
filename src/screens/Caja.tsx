@@ -46,7 +46,6 @@ export function Caja({ onCambio }: { onCambio?: () => void }) {
       <Load a={caja} que="la caja" h={420}>
         {(d) => (
           <>
-            {!d.activo && d.desde && <div class="pad small" data-testid="caja-inactiva">Arranca el {fmtDia(d.desde)}. Hasta ahí manda Expenless.</div>}
             <TarjetaLiquidez d={d} cuenta={cuenta} setCuenta={setCuenta} />
             <Atajos d={d} abrir={(h) => setHoja(h)} />
             {d.pendientes.length > 0 && (
