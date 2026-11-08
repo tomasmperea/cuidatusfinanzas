@@ -21,7 +21,7 @@ type Hoja =
   | { modo: 'confirmar'; p: Pendiente };
 type Aviso = { texto: string; deshacer?: () => Promise<unknown> } | null;
 
-export function Caja({ onCambio }: { onCambio?: () => void }) {
+export function Caja({ onCambio, accionInicial }: { onCambio?: () => void; accionInicial?: Flujo | null }) {
   const [cuenta, setCuenta] = useState(100);
   const [n, setN] = useState(0);
   const caja = useAsync(() => api.caja(cuenta), [cuenta, n]);
@@ -29,6 +29,11 @@ export function Caja({ onCambio }: { onCambio?: () => void }) {
   const [aviso, setAviso] = useState<Aviso>(null);
   const setHoja = (h: Hoja | null) => { if (h) setAviso(null); setHojaRaw(h); };
   const recargar = () => { setN((x) => x + 1); onCambio?.(); };
+  // Entrada por acceso directo: abre la hoja apenas están los datos (una sola vez)
+  const [accionPend, setAccionPend] = useState<Flujo | null>(accionInicial ?? null);
+  useEffect(() => {
+    if (accionPend && caja.data) { setHoja({ modo: "nuevo", tipo: accionPend, subcat: null }); setAccionPend(null); }
+  }, [accionPend, caja.data]);
 
   useEffect(() => {
     if (!aviso) return;

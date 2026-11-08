@@ -11,9 +11,85 @@
   "background_color": "#F3F4F6",
   "theme_color": "#1B57CC",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Gasto",
+      "short_name": "Gasto",
+      "description": "Registrar un gasto",
+      "url": "/cuidatusfinanzas/?accion=gasto#caja",
+      "icons": [
+        {
+          "src": "icons/atajo-gasto-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        },
+        {
+          "src": "icons/atajo-gasto-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Ingreso",
+      "short_name": "Ingreso",
+      "description": "Registrar un ingreso",
+      "url": "/cuidatusfinanzas/?accion=ingreso#caja",
+      "icons": [
+        {
+          "src": "icons/atajo-ingreso-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        },
+        {
+          "src": "icons/atajo-ingreso-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Transferir",
+      "short_name": "Transferir",
+      "description": "Transferir entre cuentas",
+      "url": "/cuidatusfinanzas/?accion=transferencia#caja",
+      "icons": [
+        {
+          "src": "icons/atajo-transferir-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        },
+        {
+          "src": "icons/atajo-transferir-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
   ]
 }

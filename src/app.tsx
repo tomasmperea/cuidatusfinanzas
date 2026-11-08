@@ -34,6 +34,20 @@ const TABS = [
 ] as const;
 type Tab = (typeof TABS)[number]['id'];
 
+// Accesos directos del ícono (mantener apretado): ?accion=gasto|ingreso|transferencia → Caja con la hoja abierta.
+// Se lee una sola vez al arrancar y se limpia de la URL (así recargar no vuelve a abrir la hoja).
+type Accion = 'gasto' | 'ingreso' | 'transferencia';
+let accionPendiente: Accion | null = (() => {
+  const a = new URLSearchParams(location.search).get('accion');
+  return a === 'gasto' || a === 'ingreso' || a === 'transferencia' ? a : null;
+})();
+if (accionPendiente) {
+  const q = new URLSearchParams(location.search);
+  q.delete('accion');
+  history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + '#caja');
+}
+function tomarAccion(): Accion | null { const a = accionPendiente; accionPendiente = null; return a; }
+
 function tabDeHash(): Tab {
   const h = location.hash.replace('#', '').split('/')[0];
   return (TABS.find((t) => t.id === h)?.id ?? 'inicio') as Tab;
@@ -83,7 +97,7 @@ function Tablero() {
         </header>
         <main class="screen" id="contenido" key={oculto ? 'oculto' : 'visible'}>
           {tab === 'inicio' && <Inicio esc={esc} setEsc={setEsc} irA={irA} />}
-          {tab === 'caja' && <Caja />}
+          {tab === 'caja' && <Caja accionInicial={tomarAccion()} />}
           {tab === 'mes' && <Mes esc={esc} setEsc={setEsc} diaInicial={diaHash} />}
           {tab === 'compromisos' && <Compromisos />}
           {tab === 'semana' && <Semana />}
