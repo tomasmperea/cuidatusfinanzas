@@ -1,10 +1,17 @@
 import { api, type Snapshot } from '../api';
 import { fmtAbrev, fmtDDMM, fmtDia, fmtEntero, fmtExacto, fmtPct, fmtUSD } from '../format';
+import { useEffect, useState } from 'preact/hooks';
 import { Icon, Load, Monto, Tri, useAsync } from '../ui';
+import { activarPush, desactivarPush, estadoPush, probarPush, type EstadoPush } from '../push';
 
 export function Semana() {
   const s = useAsync(() => api.snapshot(), []);
-  return <Load a={s} que="el snapshot semanal" h={500}>{(d) => <SnapshotCard d={d} />}</Load>;
+  return (
+    <>
+      <Load a={s} que="el snapshot semanal" h={500}>{(d) => <SnapshotCard d={d} />}</Load>
+      <Recordatorio />
+    </>
+  );
 }
 
 function SnapshotCard({ d }: { d: Snapshot }) {
@@ -63,5 +70,40 @@ function SnapshotCard({ d }: { d: Snapshot }) {
         </div>
       )}
     </>
+  );
+}
+
+/** Recordatorio de los viernes 18:00 (notificación sin montos que abre esta pantalla). */
+function Recordatorio() {
+  const [estado, setEstado] = useState<EstadoPush | 'cargando'>('cargando');
+  const [msg, setMsg] = useState('');
+  const [ocupado, setOcupado] = useState(false);
+  const refrescar = () => estadoPush().then(setEstado).catch(() => setEstado('sin-configurar'));
+  useEffect(() => { refrescar(); }, []);
+  const hacer = async (f: () => Promise<void>, ok: string) => {
+    setOcupado(true); setMsg('');
+    try { await f(); setMsg(ok); } catch (e) { setMsg(e instanceof Error ? e.message : 'No se pudo'); }
+    setOcupado(false); refrescar();
+  };
+  if (estado === 'cargando' || estado === 'sin-configurar') return null;
+  return (
+    <section class="card" aria-label="Recordatorio semanal" data-testid="recordatorio" style="gap:8px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <Icon n="campana" size={22} />
+        <div style="flex:1">
+          <div style="font-weight:600">Recordatorio de los viernes</div>
+          <div class="small">{estado === 'activo' ? 'Activado · 18:00' : estado === 'bloqueado' ? 'Bloqueado en los ajustes del teléfono'
+            : estado === 'no-soportado' ? 'Instalá la app en el inicio para usarlo' : 'Desactivado'}</div>
+        </div>
+        {estado === 'inactivo' && <button class="btn" disabled={ocupado} onClick={() => hacer(activarPush, 'Listo, te aviso los viernes')} data-testid="push-activar">Activar</button>}
+      </div>
+      {estado === 'activo' && (
+        <div style="display:flex;gap:8px">
+          <button class="chip-g" disabled={ocupado} onClick={() => hacer(probarPush, 'Te mandé una de prueba')}>Probar</button>
+          <button class="chip-g" disabled={ocupado} onClick={() => hacer(desactivarPush, 'Recordatorio desactivado')}>Desactivar</button>
+        </div>
+      )}
+      {msg && <div class="small" role="status">{msg}</div>}
+    </section>
   );
 }
