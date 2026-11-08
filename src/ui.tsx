@@ -21,6 +21,8 @@ const P: Record<string, ComponentChildren> = {
   retry: <><path d="M20 12a8 8 0 1 1-2.3-5.6" /><path d="M20 4v5h-5" /></>,
   ok: <><circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" /></>,
   billetera: <><path d="M4 7h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4z" /><path d="M4 7V6a2 2 0 0 1 2-2h10" /><path d="M16 13.5h1" /></>,
+  ojo: <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>,
+  'ojo-no': <><path d="M3 3l18 18" /><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4M6.6 6.6C3.9 8.3 2 12 2 12s3.5 7 10 7c1.9 0 3.5-.6 4.9-1.4" /><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" /></>,
   plus: <path d="M12 5v14M5 12h14" />,
   lapiz: <><path d="M4 20h4L19 9l-4-4L4 16z" /><path d="m13 7 4 4" /></>,
   tacho: <><path d="M4 7h16" /><path d="M10 7V4h4v3" /><path d="m6 7 1 13h10l1-13" /></>,

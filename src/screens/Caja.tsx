@@ -11,8 +11,8 @@ const ICONO_GRUPO: Record<string, string> = {
 };
 const iconoDe = (grupo: string, subcat?: number | null) => (subcat === 1 ? 'flechas' : ICONO_GRUPO[grupo] || 'punto');
 
-function fmtMon(n: number, moneda: string, exacto = true) {
-  return moneda === 'USD' ? fmtUSD(n) : exacto ? fmtExacto(n) : fmtAbrev(n);
+function fmtMon(n: number, moneda: string, ver = false) {
+  return moneda === 'USD' ? fmtUSD(n, { ver }) : fmtExacto(n, { ver });
 }
 
 type Hoja =
@@ -304,13 +304,13 @@ function HojaRegistro({ d, hoja, cuentaActual, cerrar, listo }: {
         <button class={`monto-reg${enDestino ? '' : ' activo'}`} onClick={() => setEnDestino(false)} aria-label="Monto">
           {tieneOperacion(expr) && <span class="expr num">{mostrar(expr)}</span>}
           <span class="disp num big2" data-testid="monto-reg">
-            {monto == null ? (cta.moneda === 'USD' ? 'USD 0' : '$0') : fmtMon((tipo === 'ingreso' ? 1 : -1) * monto, cta.moneda)}
+            {monto == null ? (cta.moneda === 'USD' ? 'USD 0' : '$0') : fmtMon((tipo === 'ingreso' ? 1 : -1) * monto, cta.moneda, true)}
           </span>
         </button>
         {dobleMoneda && (
           <button class={`monto-reg chico${enDestino ? ' activo' : ''}`} onClick={() => setEnDestino(true)} aria-label={`Monto que entra en ${dst!.nombre}`}>
             {tieneOperacion(exprDest) && <span class="expr num">{mostrar(exprDest)}</span>}
-            <span class="num">Entra {montoDest == null ? '—' : fmtMon(montoDest, dst!.moneda)}</span>
+            <span class="num">Entra {montoDest == null ? '—' : fmtMon(montoDest, dst!.moneda, true)}</span>
           </button>
         )}
 

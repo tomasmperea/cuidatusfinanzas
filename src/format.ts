@@ -9,13 +9,27 @@ const nf = (dec: number) =>
 const nf0 = nf(0);
 const nf2 = nf(2);
 
+// ---------- Ocultar saldos (ojito) ----------
+// Con el modo oculto, todos los montos se muestran enmascarados salvo los que se piden con { ver: true }
+// (lo que se está tipeando en la calculadora). Los porcentajes y las fechas quedan visibles.
+let oculto = false;
+export const MASCARA = '••••••';
+export function setOculto(v: boolean) { oculto = v; }
+export function estaOculto() { return oculto; }
+const tapar = (ver?: boolean) => oculto && !ver;
+/** Tapa los montos que vienen escritos dentro de un texto ("Bajá Viajes a $36 k por semana"). */
+export function taparEnTexto(t: string): string {
+  return oculto ? t.replace(/\$\s?[\d.,]+(\s?(k|M|mil)\b)?/g, `$${NBSP}${MASCARA}`) : t;
+}
+
 function signo(n: number): string {
   return n < 0 ? MINUS : '';
 }
 
 /** Monto abreviado con 2 decimales: $3,22 M · $149,02 k · −$950. */
-export function fmtAbrev(n: number | null | undefined, opts: { signoMas?: boolean; sinPeso?: boolean } = {}): string {
+export function fmtAbrev(n: number | null | undefined, opts: { signoMas?: boolean; sinPeso?: boolean; ver?: boolean } = {}): string {
   if (n === null || n === undefined || !Number.isFinite(n)) return '—';
+  if (tapar(opts.ver)) return opts.sinPeso ? '•••' : `$${NBSP}${MASCARA}`;
   const abs = Math.abs(n);
   const pre = (n < 0 ? MINUS : opts.signoMas && n > 0 ? '+' : '') + (opts.sinPeso ? '' : '$');
   // Se redondea a centésimos de la unidad para decidir el salto k → M (999.999 → $1,00 M).
@@ -31,8 +45,9 @@ export function fmtCompacto(n: number | null | undefined): string {
 }
 
 /** Monto exacto: $3.223.496 · −$149.018,69. */
-export function fmtExacto(n: number | null | undefined, opts: { signoMas?: boolean } = {}): string {
+export function fmtExacto(n: number | null | undefined, opts: { signoMas?: boolean; ver?: boolean } = {}): string {
   if (n === null || n === undefined || !Number.isFinite(n)) return '—';
+  if (tapar(opts.ver)) return `$${NBSP}${MASCARA}`;
   const abs = Math.abs(n);
   const s = Number.isInteger(Math.round(abs * 100) / 100) ? nf0.format(abs) : nf2.format(abs);
   return `${n < 0 ? MINUS : opts.signoMas && n > 0 ? '+' : ''}$${s}`;
@@ -41,11 +56,13 @@ export function fmtExacto(n: number | null | undefined, opts: { signoMas?: boole
 /** Monto redondeado a pesos: −$149.019. */
 export function fmtEntero(n: number | null | undefined): string {
   if (n === null || n === undefined || !Number.isFinite(n)) return '—';
+  if (tapar()) return `$${NBSP}${MASCARA}`;
   const r = Math.round(n);
   return `${signo(r)}$${nf0.format(Math.abs(r))}`;
 }
 
-export function fmtUSD(n: number): string {
+export function fmtUSD(n: number, opts: { ver?: boolean } = {}): string {
+  if (tapar(opts.ver)) return `USD${NBSP}${MASCARA}`;
   return `USD${NBSP}${nf2.format(n)}`;
 }
 

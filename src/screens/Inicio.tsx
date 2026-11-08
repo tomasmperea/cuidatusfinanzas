@@ -1,6 +1,6 @@
 import { api, type Ajustes, type Compromiso, type Escenario, type Kpis } from '../api';
 import { Curva90 } from '../chart';
-import { fmtAbrev, fmtDDMM, fmtDia, fmtEntero, fmtExacto, fmtPct, fmtUSD, normalizarTexto, sumarDias } from '../format';
+import { fmtAbrev, fmtDDMM, fmtDia, fmtEntero, fmtExacto, fmtPct, fmtUSD, normalizarTexto, sumarDias, estaOculto, taparEnTexto } from '../format';
 import { Icon, Load, Monto, useAsync } from '../ui';
 import { SelectorEscenario } from './comunes';
 
@@ -41,13 +41,14 @@ export function Inicio({ esc, setEsc, irA }: { esc: Escenario; setEsc: (e: Escen
 }
 
 function FilaAjuste({ a }: { a: NonNullable<Ajustes['ajustes']>[number] }) {
-  const titulo = normalizarTexto(a.titulo);
+  const titulo = taparEnTexto(normalizarTexto(a.titulo));
   const delta = a.impacto?.delta_minimo;
-  const label = `${titulo}. ${normalizarTexto(a.texto)}${delta != null ? ` Mejora el mínimo en ${fmtExacto(delta)}.` : ''}`;
+  // con el ojito activo no se lee el texto de la IA (trae montos)
+  const label = `${titulo}.${estaOculto() ? '' : ' ' + normalizarTexto(a.texto)}${delta != null ? ` Mejora el mínimo en ${fmtExacto(delta)}.` : ''}`;
   return (
     <li class="fila1">
       <span class="sr">{label}</span>
-      <span class="ell" aria-hidden="true">{titulo}</span>
+      <span class="dos-lineas" aria-hidden="true">{titulo}</span>
       {delta != null && <span class="num good" style="font-weight:650" aria-hidden="true">{fmtAbrev(delta, { signoMas: true })}</span>}
     </li>
   );

@@ -1,13 +1,29 @@
 import { useEffect, useState } from 'preact/hooks';
 import { limpiarCache, onSesionInvalida, type Escenario } from './api';
 import { BotonSalir, Desafio, Enrolar, Login, useEtapa } from './auth';
-import { fmtDia, hoyAR } from './format';
+import { fmtDia, hoyAR, setOculto } from './format';
 import { Icon, SheetHost } from './ui';
 import { Inicio } from './screens/Inicio';
 import { Mes } from './screens/Mes';
 import { Compromisos } from './screens/Compromisos';
 import { Semana } from './screens/Semana';
 import { Caja } from './screens/Caja';
+
+const CLAVE_OCULTO = 'ctf_ocultar_saldos';
+function leerOculto(): boolean {
+  try { return localStorage.getItem(CLAVE_OCULTO) === '1'; } catch { return false; }
+}
+setOculto(leerOculto());
+
+/** Ojito: oculta/muestra todos los montos (queda guardado en este teléfono). */
+function BotonOjito({ oculto, setOculto: cambiar }: { oculto: boolean; setOculto: (v: boolean) => void }) {
+  return (
+    <button class="iconbtn" aria-pressed={oculto} aria-label={oculto ? 'Mostrar saldos' : 'Ocultar saldos'}
+      title={oculto ? 'Mostrar saldos' : 'Ocultar saldos'} data-testid="ojito" onClick={() => cambiar(!oculto)}>
+      <Icon n={oculto ? 'ojo-no' : 'ojo'} size={22} />
+    </button>
+  );
+}
 
 const TABS = [
   { id: 'inicio', nombre: 'Inicio', icono: 'home' },
@@ -43,6 +59,12 @@ function Tablero() {
     return () => removeEventListener('hashchange', f);
   }, []);
   const irA = (t: string) => { location.hash = t; scrollTo(0, 0); };
+  const [oculto, setOcultoSt] = useState(leerOculto());
+  const cambiarOculto = (v: boolean) => {
+    setOculto(v);
+    try { localStorage.setItem(CLAVE_OCULTO, v ? '1' : '0'); } catch { /* sin almacenamiento: dura la sesión */ }
+    setOcultoSt(v);
+  };
   const hoy = hoyAR();
   const diaHash = location.hash.split('/')[1];
   const head: Record<Tab, [string, string]> = {
@@ -57,9 +79,9 @@ function Tablero() {
       <div class="app">
         <header class="top">
           <div style="display:flex;flex-direction:column"><h1 class="disp">{head[tab][0]}</h1>{head[tab][1] && <div class="sub">{head[tab][1]}</div>}</div>
-          <BotonSalir icono={<Icon n="salir" size={22} />} />
+          <div style="display:flex;gap:4px"><BotonOjito oculto={oculto} setOculto={cambiarOculto} /><BotonSalir icono={<Icon n="salir" size={22} />} /></div>
         </header>
-        <main class="screen" id="contenido">
+        <main class="screen" id="contenido" key={oculto ? 'oculto' : 'visible'}>
           {tab === 'inicio' && <Inicio esc={esc} setEsc={setEsc} irA={irA} />}
           {tab === 'caja' && <Caja />}
           {tab === 'mes' && <Mes esc={esc} setEsc={setEsc} diaInicial={diaHash} />}
