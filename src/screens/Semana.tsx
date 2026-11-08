@@ -1,16 +1,30 @@
 import { api, type Snapshot } from '../api';
 import { fmtAbrev, fmtDDMM, fmtDia, fmtEntero, fmtExacto, fmtPct, fmtUSD } from '../format';
-import { useEffect, useState } from 'preact/hooks';
+import { useState } from 'preact/hooks';
 import { Icon, Load, Monto, Tri, useAsync } from '../ui';
-import { activarPush, desactivarPush, estadoPush, probarPush, type EstadoPush } from '../push';
+import { sumarDias } from '../format';
 
-export function Semana() {
-  const s = useAsync(() => api.snapshot(), []);
+/** Semana calendario (lunes a domingo). La semana actual va de lunes a hoy; las flechas recorren las anteriores.
+ *  Es la misma función de la base que arma el PDF del domingo: los números coinciden. */
+export function Semana({ fechaInicial }: { fechaInicial?: string }) {
+  const [fecha, setFecha] = useState<string | null>(fechaInicial && /^\d{4}-\d{2}-\d{2}$/.test(fechaInicial) ? fechaInicial : null);
+  const s = useAsync(() => api.snapshot(fecha), [fecha]);
   return (
-    <>
-      <Load a={s} que="el snapshot semanal" h={500}>{(d) => <SnapshotCard d={d} />}</Load>
-      <Recordatorio />
-    </>
+    <Load a={s} que="la semana" h={500}>{(d) => (
+      <>
+        <nav class="semana-nav" aria-label="Elegir semana">
+          <button class="iconbtn" aria-label="Semana anterior" disabled={!d.hay_anterior} data-testid="sem-ant"
+            onClick={() => setFecha(sumarDias(d.semana.desde, -7))}><span style="display:flex;transform:rotate(180deg)"><Icon n="chev" size={22} /></span></button>
+          <div style="text-align:center">
+            <div style="font-weight:650" class="num">{fmtDDMM(d.semana.desde)} – {fmtDDMM(d.domingo ?? d.semana.hasta)}</div>
+            <div class="small">{d.en_curso ? `En curso · hasta hoy (${d.dias} de 7 días)` : d.es_actual ? 'Esta semana' : 'Semana cerrada'}</div>
+          </div>
+          <button class="iconbtn" aria-label="Semana siguiente" disabled={!!d.es_actual} data-testid="sem-sig"
+            onClick={() => setFecha(sumarDias(d.semana.desde, 7))}><Icon n="chev" size={22} /></button>
+        </nav>
+        <SnapshotCard d={d} />
+      </>
+    )}</Load>
   );
 }
 
@@ -20,7 +34,7 @@ function SnapshotCard({ d }: { d: Snapshot }) {
     <>
       <section class="card" aria-label="Gasto de la semana" style="gap:6px">
         <div class="cardhead">
-          <h2 class="num">{fmtDDMM(d.semana.desde)} – {fmtDDMM(d.semana.hasta)}</h2>
+          <h2>Gasto</h2>
           <Monto n={d.gasto_semana} titulo="Gasto de la semana" cls="disp"
             extra={[['Promedio semanal', fmtExacto(d.promedio_semanal)], ['Desvío', fmtExacto(d.desvio_neto, { signoMas: true })], ['Desvío %', fmtPct(d.desvio_neto_pct, { signoMas: true })]]} />
         </div>
@@ -28,7 +42,7 @@ function SnapshotCard({ d }: { d: Snapshot }) {
           <span class="sr">{menos ? 'Gastaste menos que tu promedio' : 'Gastaste más que tu promedio'}: </span>
           <Tri up={!menos} color={menos ? 'var(--good)' : 'var(--bad)'} />
           <b class={menos ? 'good' : 'bad'}>{fmtAbrev(d.desvio_neto, { signoMas: true })}</b>
-          <span class="muted">vs. promedio {fmtAbrev(d.promedio_semanal)}</span>
+          <span class="muted">vs. {d.en_curso ? 'esperado a hoy' : 'promedio'} {fmtAbrev(d.promedio_semanal)}</span>
         </div>
         {d.desvios.length > 0 && (
           <ul class="rows">
@@ -47,7 +61,7 @@ function SnapshotCard({ d }: { d: Snapshot }) {
           </ul>
         )}
       </section>
-      <section class="card" aria-label="Próximos 7 días" style="gap:4px">
+      {d.es_actual !== false && <section class="card" aria-label="Próximos 7 días" style="gap:4px">
         <h2>Próximos 7 días</h2>
         <ul class="rows">
           {d.compromisos_7d.items.map((c) => {
@@ -62,48 +76,13 @@ function SnapshotCard({ d }: { d: Snapshot }) {
             );
           })}
         </ul>
-      </section>
-      {d.proximo_valle && (
+      </section>}
+      {d.es_actual !== false && d.proximo_valle && (
         <div class="alerta num" style="margin:0 16px">
           <Icon n="warn" size={18} color="var(--warn)" />
           <span><b>Valle:</b> <span class="nw">{fmtEntero(d.proximo_valle.saldo)}</span> el {fmtDDMM(d.proximo_valle.fecha)}</span>
         </div>
       )}
     </>
-  );
-}
-
-/** Recordatorio de los viernes 18:00 (notificación sin montos que abre esta pantalla). */
-function Recordatorio() {
-  const [estado, setEstado] = useState<EstadoPush | 'cargando'>('cargando');
-  const [msg, setMsg] = useState('');
-  const [ocupado, setOcupado] = useState(false);
-  const refrescar = () => estadoPush().then(setEstado).catch(() => setEstado('sin-configurar'));
-  useEffect(() => { refrescar(); }, []);
-  const hacer = async (f: () => Promise<void>, ok: string) => {
-    setOcupado(true); setMsg('');
-    try { await f(); setMsg(ok); } catch (e) { setMsg(e instanceof Error ? e.message : 'No se pudo'); }
-    setOcupado(false); refrescar();
-  };
-  if (estado === 'cargando' || estado === 'sin-configurar') return null;
-  return (
-    <section class="card" aria-label="Recordatorio semanal" data-testid="recordatorio" style="gap:8px">
-      <div style="display:flex;align-items:center;gap:10px">
-        <Icon n="campana" size={22} />
-        <div style="flex:1">
-          <div style="font-weight:600">Recordatorio de los viernes</div>
-          <div class="small">{estado === 'activo' ? 'Activado · 18:00' : estado === 'bloqueado' ? 'Bloqueado en los ajustes del teléfono'
-            : estado === 'no-soportado' ? 'Instalá la app en el inicio para usarlo' : 'Desactivado'}</div>
-        </div>
-        {estado === 'inactivo' && <button class="btn" disabled={ocupado} onClick={() => hacer(activarPush, 'Listo, te aviso los viernes')} data-testid="push-activar">Activar</button>}
-      </div>
-      {estado === 'activo' && (
-        <div style="display:flex;gap:8px">
-          <button class="chip-g" disabled={ocupado} onClick={() => hacer(probarPush, 'Te mandé una de prueba')}>Probar</button>
-          <button class="chip-g" disabled={ocupado} onClick={() => hacer(desactivarPush, 'Recordatorio desactivado')}>Desactivar</button>
-        </div>
-      )}
-      {msg && <div class="small" role="status">{msg}</div>}
-    </section>
   );
 }

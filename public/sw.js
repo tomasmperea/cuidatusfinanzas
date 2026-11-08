@@ -1,6 +1,6 @@
 // Service worker de CuidaTusFinanzas: cachea SOLO el shell de la app (HTML, JS, CSS, íconos)
 // del propio origen. NUNCA cachea respuestas de la API (Supabase) ni nada de otro origen.
-const CACHE = 'ctf-shell-v3';
+const CACHE = 'ctf-shell-v4';
 const BASE = new URL('./', self.location).pathname; // /cuidatusfinanzas/
 const SHELL = [BASE, BASE + 'manifest.webmanifest', BASE + 'icons/icon-192.png', BASE + 'icons/icon-512.png'];
 
@@ -37,33 +37,3 @@ self.addEventListener('fetch', (e) => {
   })));
 });
 
-// ---- Notificaciones push (resumen semanal: solo un llamador, sin montos) ----
-self.addEventListener('push', (e) => {
-  let d = {};
-  try { d = e.data ? e.data.json() : {}; } catch (err) { d = {}; }
-  const titulo = typeof d.title === 'string' ? d.title.slice(0, 60) : 'CuidaTusFinanzas';
-  const cuerpo = typeof d.body === 'string' ? d.body.slice(0, 120) : 'Tu resumen semanal está listo';
-  e.waitUntil(self.registration.showNotification(titulo, {
-    body: cuerpo,
-    icon: BASE + 'icons/icon-192.png',
-    badge: BASE + 'icons/icon-192.png',
-    tag: typeof d.tag === 'string' ? d.tag : 'ctf',
-    data: { url: d.url },
-  }));
-});
-
-self.addEventListener('notificationclick', (e) => {
-  e.notification.close();
-  // Solo se abren direcciones de la propia app (nunca un link que venga en la notificación hacia afuera)
-  let destino = self.location.origin + BASE + '#semana';
-  try {
-    const u = new URL(e.notification.data && e.notification.data.url, self.location.origin);
-    if (u.origin === self.location.origin && u.pathname.startsWith(BASE)) destino = u.href;
-  } catch (err) { /* queda el destino por defecto */ }
-  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ws) => {
-    for (const w of ws) {
-      if (w.url.startsWith(self.location.origin + BASE)) { w.navigate(destino); return w.focus(); }
-    }
-    return self.clients.openWindow(destino);
-  }));
-});

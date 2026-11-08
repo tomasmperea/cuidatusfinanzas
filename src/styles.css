@@ -202,3 +202,5 @@ input.nota { min-height: 44px; border-radius: 12px; border: 1px solid var(--line
 /* ajustes: título en hasta 2 líneas, monto arriba a la derecha */
 .dos-lineas { flex: 1; min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.3; }
 li.fila1:has(.dos-lineas) { align-items: flex-start; padding-top: 10px; padding-bottom: 10px; }
+.semana-nav { display: flex; align-items: center; justify-content: space-between; padding: 0 8px; }
+.semana-nav .iconbtn:disabled { opacity: .3; }

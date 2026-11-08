@@ -132,6 +132,7 @@ export interface Snapshot {
   proximo_valle: { fecha: string; saldo: number } | null;
   primer_dia_bajo_piso: { fecha: string; piso: number; dias: number; minimo: number } | null;
   liquidez_hoy: number; texto: string;
+  dias?: number; en_curso?: boolean; es_actual?: boolean; lunes?: string; domingo?: string; hay_anterior?: boolean;
 }
 export interface Ajustes {
   estado: 'ok' | 'sin_disparo' | 'desactualizado' | 'sin_corrida' | string; fecha_corrida?: string;
@@ -187,7 +188,7 @@ export const api = {
   ingresosEgresos: () => rpc<IngresosEgresos>('rpc_ingresos_egresos_mes', { p_mes: null }),
   liquidezComprometida: () => rpc<LiquidezComprometida>('rpc_liquidez_comprometida', { p_mes: null }),
   compromisos: () => rpc<Compromiso[]>('rpc_compromisos', { p_dias: 90 }),
-  snapshot: () => rpc<Snapshot>('rpc_snapshot_semanal', { p_hasta: null }),
+  snapshot: (fecha: string | null = null) => rpc<Snapshot>('rpc_semana', { p_fecha: fecha }),
   ajustes: () => rpc<Ajustes>('rpc_ajustes'),
   dashboard: () => rpc<Dashboard>('rpc_dashboard'),
 };

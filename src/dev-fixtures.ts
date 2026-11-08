@@ -7,6 +7,7 @@ const ARCHIVO: Record<string, string> = {
   rpc_ingresos_egresos_mes: 'ingresos_egresos', rpc_liquidez_comprometida: 'liquidez_comprometida',
   rpc_compromisos: 'compromisos', rpc_snapshot_semanal: 'snapshot', rpc_ajustes: 'ajustes', rpc_dashboard: 'dashboard',
   rpc_caja: 'caja',
+  rpc_semana: 'snapshot',
 };
 
 export function activarFixtures(params: URLSearchParams) {
@@ -23,6 +24,7 @@ export function activarFixtures(params: URLSearchParams) {
     const esc = args.p_escenario as string | undefined;
     if (esc && data && !Array.isArray(data) && data[esc]) data = data[esc];
     if (name === 'rpc_caja') { caja = data; return JSON.parse(JSON.stringify(caja)); }
+    if (name === 'rpc_semana') return { ...data, es_actual: !args?.p_fecha, en_curso: false, dias: 7, hay_anterior: true };
     if (name === 'rpc_kpis' && backupDias) data = { ...data, backup: { ...data.backup, dias: Number(backupDias), estado: 'viejo' } };
     return data;
   });
