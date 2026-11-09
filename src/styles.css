@@ -204,3 +204,50 @@ input.nota { min-height: 44px; border-radius: 12px; border: 1px solid var(--line
 li.fila1:has(.dos-lineas) { align-items: flex-start; padding-top: 10px; padding-bottom: 10px; }
 .semana-nav { display: flex; align-items: center; justify-content: space-between; padding: 0 8px; }
 .semana-nav .iconbtn:disabled { opacity: .3; }
+
+/* asistente "¿Me lo puedo permitir?" */
+.sheet.asis { height: calc(100dvh - 56px); max-height: calc(100dvh - 56px); padding: 8px 0 0; gap: 0; }
+.asis-head { display: flex; align-items: center; gap: 8px; padding: 0 4px 6px 20px; }
+.asis-head h2 { margin: 0; font-size: 16px; font-weight: 650; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.asis-head .small { white-space: nowrap; }
+.asis-lista { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 4px 16px 12px; overscroll-behavior: contain; }
+.asis-vacio { display: flex; flex-direction: column; gap: 10px; padding: 8px 0; }
+.asis-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.asis-chips .chip-g { min-height: 44px; }
+.burb { max-width: 86%; padding: 10px 14px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.burb.yo { align-self: flex-end; background: var(--accent-soft); border-radius: 18px 18px 4px 18px; }
+.burb.ia { align-self: flex-start; background: var(--bg); border: 1px solid var(--line); border-radius: 18px 18px 18px 4px; }
+.burb.err { border-color: var(--warn-line); background: var(--warn-soft); }
+.burb.preg { display: flex; flex-direction: column; gap: 10px; }
+.burb.pensando { padding: 14px 16px; }
+.dots { display: inline-flex; gap: 5px; }
+.dots i { width: 7px; height: 7px; border-radius: 4px; background: var(--muted); animation: asis-dot 1s infinite ease-in-out; }
+.dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes asis-dot { 0%, 80%, 100% { opacity: .3; } 40% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .dots i { animation: none; } }
+.asis-nota { display: flex; align-items: center; gap: 6px; margin-top: auto; padding-top: 6px; }
+.asis-form { display: flex; gap: 8px; align-items: center; padding: 10px 12px calc(12px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); }
+.asis-form input { flex: 1; min-height: 48px; border-radius: 24px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); font: inherit; font-size: 16px; padding: 0 16px; }
+.asis-enviar { width: 48px; height: 48px; border-radius: 24px; background: var(--accent); color: var(--card); display: flex; align-items: center; justify-content: center; flex: none; }
+.asis-enviar:disabled { opacity: .45; }
+.asis-card { background: var(--bg); border: 1px solid var(--line); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.asis-card-top { display: flex; align-items: center; gap: 10px; }
+.v-tag { min-height: 28px; padding: 0 12px; border-radius: 14px; font-weight: 650; font-size: 13px; display: inline-flex; align-items: center; }
+.v-ok { background: var(--accent-soft); color: var(--good); }
+.v-aj { background: var(--warn-soft); color: var(--warn); border: 1px solid var(--warn-line); }
+.v-no { background: var(--warn-soft); color: var(--bad); border: 1px solid var(--warn-line); }
+.asis-tit { font-size: 16px; font-weight: 650; line-height: 1.35; }
+.asis-txt { line-height: 1.45; }
+.asis-graf { width: 100%; height: auto; display: block; }
+.g-piso { stroke: var(--warn-mark); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.g-cero { stroke: var(--bad); stroke-width: 1; opacity: .6; }
+.g-sin { fill: none; stroke: var(--neutral-bar); stroke-width: 2; stroke-linejoin: round; }
+.g-con { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; }
+.g-min { fill: var(--warn-mark); }
+.g-lbl { fill: var(--muted); font-size: 11px; }
+.asis-datos { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 12px; font-size: 13.5px; }
+.asis-datos dt { color: var(--muted); }
+.asis-datos dd { margin: 0; text-align: right; font-weight: 650; }
+.asis-sup { border-top: 1px solid var(--line); padding-top: 4px; }
+.asis-sup summary { min-height: 44px; display: flex; align-items: center; font-size: 13.5px; font-weight: 600; color: var(--accent); cursor: pointer; }
+.asis-sup ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 1.5; }

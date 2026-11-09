@@ -177,7 +177,44 @@ async function escribir<T>(name: string, args: Record<string, unknown>): Promise
   return r;
 }
 
+// ---------- Asistente "¿Me lo puedo permitir?" (Edge Function asistente) ----------
+export interface SimTarjeta {
+  meses: number; desde: string; hasta: string; piso: number;
+  minimo_con: number; mes_minimo_con: string; minimo_sin: number; mes_minimo_sin: string;
+  dias_bajo_piso: number; primer_dia_bajo_piso: string | null; quiebre: string | null;
+  cierre_con: number; cierre_sin: number; costo_total_escenario: number; egreso_mensual_max_escenario: number;
+  primer_egreso_sobre_sueldo_pct: number | null;
+  supuestos: Record<string, any>;
+  serie: Array<{ mes: string; min_con: number; min_sin: number; dias: number }>;
+}
+export interface SimRango { minimo_con: number; mes_minimo_con: string; dias_bajo_piso: number; cierre_con: number; quiebre: string | null }
+export interface RespuestaIA {
+  tipo: 'pregunta' | 'veredicto' | 'respuesta' | 'error'; texto: string;
+  preguntas?: Array<{ texto: string; opciones: string[] }>;
+  veredicto?: 'te_da' | 'ajustado' | 'no_te_da'; titulo?: string; chips?: string[]; recordar?: string;
+  simulaciones?: { central: SimTarjeta; conservador?: SimRango; optimista?: SimRango };
+}
+export interface TurnoIA { id: number | null; respuesta: RespuestaIA; uso?: { consultas_hoy: number; tope_diario: number; costo_usd: number } }
+type AsistenteFn = (conversacion: string, mensaje: string) => Promise<TurnoIA>;
+
+let asistenteImpl: AsistenteFn = async (conversacion, mensaje) => {
+  await exigirAal2();
+  const { data, error } = await supabase.functions.invoke('asistente', { body: { conversacion, mensaje } });
+  if (error) {
+    let msg = 'No pude responder ahora. Probá de nuevo en un rato.';
+    const ctx = (error as { context?: Response }).context;
+    try { const j = ctx ? await ctx.json() : null; if (j?.mensaje) msg = j.mensaje; if (ctx?.status === 401 || ctx?.status === 403) { avisar(); } } catch { /* sin cuerpo */ }
+    throw new Error(msg);
+  }
+  return data as TurnoIA;
+};
+/** Solo para `vite dev` con fixtures. */
+export function setAsistenteImpl(fn: AsistenteFn) { asistenteImpl = fn; }
+
 export const api = {
+  asistente: (conversacion: string, mensaje: string) => asistenteImpl(conversacion, mensaje),
+  iaMarcar: (accion: 'guardar' | 'recordar' | 'olvidar', id: number | null, texto: string | null = null) =>
+    rpcImpl('rpc_ia_marcar', { p_accion: accion, p_id: id, p_texto: texto }) as Promise<{ ok: boolean }>,
   caja: (cuenta: number) => rpcImpl('rpc_caja', { p_cuenta: cuenta }) as Promise<Caja>,
   guardarMov: (m: MovInput) => escribir<Guardado>('rpc_mov_guardar', { p: m }),
   borrarMov: (id: number, deshacer = false) => escribir<Guardado>('rpc_mov_borrar', { p_id: id, p_deshacer: deshacer }),

@@ -3,6 +3,7 @@ import { Curva90 } from '../chart';
 import { fmtAbrev, fmtDDMM, fmtDia, fmtEntero, fmtExacto, fmtPct, fmtUSD, normalizarTexto, sumarDias, estaOculto, taparEnTexto } from '../format';
 import { Icon, Load, Monto, useAsync } from '../ui';
 import { SelectorEscenario } from './comunes';
+import { BotonAsistente } from './Asistente';
 
 export function Inicio({ esc, setEsc, irA }: { esc: Escenario; setEsc: (e: Escenario) => void; irA: (t: string) => void }) {
   const kpis = useAsync(() => api.kpis(esc), [esc]);
@@ -36,6 +37,7 @@ export function Inicio({ esc, setEsc, irA }: { esc: Escenario; setEsc: (e: Escen
       <Load a={comp} que="los próximos compromisos" h={200}>
         {(c) => <Proximos7 items={c} hoy={kpis.data?.hoy ?? c[0]?.fecha} irA={irA} />}
       </Load>
+      <BotonAsistente />
     </>
   );
 }

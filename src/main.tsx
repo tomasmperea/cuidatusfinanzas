@@ -10,6 +10,7 @@ async function arrancar() {
     if (q.has('fixtures')) {
       const m = await import('./dev-fixtures');
       m.activarFixtures(q);
+      m.activarAsistenteFicticio(q);
       sinAuth = true;
     }
   }

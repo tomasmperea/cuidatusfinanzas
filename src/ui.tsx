@@ -42,6 +42,10 @@ const P: Record<string, ComponentChildren> = {
   ingreso: <><path d="M12 4v12M7 11l5 5 5-5" /><path d="M5 20h14" /></>,
   pesas: <><path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12" /></>,
   punto: <circle cx="12" cy="12" r="3" />,
+  chispa: <><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /><path d="M19 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z" /></>,
+  enviar: <path d="M5 12h14M13 6l6 6-6 6" />,
+  cerrar: <path d="M6 6l12 12M18 6 6 18" />,
+  candado: <><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></>,
   copy: <><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3" /></>,
 };
 export function Icon({ n, size = 20, color }: { n: keyof typeof P | string; size?: number; color?: string }) {

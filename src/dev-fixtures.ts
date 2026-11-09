@@ -1,6 +1,6 @@
 // SOLO DESARROLLO. Se importa dentro de `if (import.meta.env.DEV)`, así que no entra en el build.
 // Los JSON se sirven desde ../fixtures (fuera del repo) con el plugin `fixtures` de vite.config.ts.
-import { setRpcImpl } from './api';
+import { setAsistenteImpl, setRpcImpl, type TurnoIA } from './api';
 
 const ARCHIVO: Record<string, string> = {
   rpc_kpis: 'kpis', rpc_forecast: 'forecast', rpc_calendario_mes: 'calendario',
@@ -17,6 +17,7 @@ export function activarFixtures(params: URLSearchParams) {
     await new Promise((r) => setTimeout(r, 60));
     if (fallan.includes('all') || fallan.includes(name)) throw new Error('Fallo simulado (modo desarrollo)');
     if (name.startsWith('rpc_mov_') || name === 'rpc_pendiente_descartar') return simularEscritura(name, args);
+    if (name === 'rpc_ia_marcar') return { ok: true };
     if (name === 'rpc_caja' && caja) return JSON.parse(JSON.stringify(caja));
     const res = await fetch(`/__fixtures/${ARCHIVO[name]}.json`);
     if (!res.ok) throw new Error(`Sin fixture para ${name}`);
@@ -67,4 +68,43 @@ function simularEscritura(name: string, a: any) {
     return { ok: true };
   }
   return { ok: true };
+}
+
+// ---- Asistente simulado (datos SINTÉTICOS, no son de Tomás) ----
+let turno = 0;
+export function activarAsistenteFicticio(params: URLSearchParams) {
+  const falla = params.get('asis') === 'error';
+  setAsistenteImpl(async (_c, mensaje): Promise<TurnoIA> => {
+    await new Promise((r) => setTimeout(r, 400));
+    if (falla) throw new Error('Llegaste al máximo de consultas de hoy.');
+    turno++;
+    const uso = { consultas_hoy: turno, tope_diario: 30, costo_usd: 0.04 };
+    if (turno === 1) {
+      return { id: 1, uso, respuesta: { tipo: 'pregunta', texto: 'Para proyectarlo bien me faltan dos datos:', preguntas: [
+        { texto: '¿Entregás la moto actual?', opciones: ['Sí', 'No'] },
+        { texto: '¿Cuándo pagás la primera cuota?', opciones: ['Este mes', 'El mes que viene'] }] } };
+    }
+    const meses = 39;
+    const serie = Array.from({ length: meses }, (_, i) => {
+      const d = new Date(2026, 10 + i, 1);
+      const mes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      const base = 1000000 + 60000 * i + (i % 6 === 1 ? 900000 : 0);
+      return { mes, min_sin: base, min_con: base - 300000 * Math.min(i, 36) + 250000 * Math.floor(i / 2), dias: i === 4 ? 9 : 0 };
+    });
+    const min = serie.reduce((b, p) => (p.min_con < b.min_con ? p : b));
+    return { id: 2, uso, respuesta: {
+      tipo: 'veredicto', veredicto: 'ajustado', titulo: 'Moto nueva en 36 cuotas', chips: ['¿Y en 24 cuotas?', '¿Y si la entrego?'],
+      recordar: mensaje.includes('dólares') ? 'No usar los dólares para consumo' : undefined,
+      texto: 'Te da, pero en marzo quedás bajo el piso unos días. Si arrancás después del aguinaldo, lo evitás.',
+      simulaciones: {
+        central: { meses, desde: serie[0].mes, hasta: serie[meses - 1].mes, piso: 200000, minimo_con: min.min_con, mes_minimo_con: min.mes,
+          minimo_sin: 1000000, mes_minimo_sin: serie[0].mes, dias_bajo_piso: 9, primer_dia_bajo_piso: '2027-03-22', quiebre: null,
+          cierre_con: 2500000, cierre_sin: 4000000, costo_total_escenario: 10800000, egreso_mensual_max_escenario: 300000,
+          primer_egreso_sobre_sueldo_pct: 9.6, serie,
+          supuestos: { sueldo_regla: 'sigue a la inflación con un aumento cada 3 meses', inflacion_mensual: 0.01657,
+            inflacion_fuente: 'BCRA REM octubre 2026 (relevado 28-30/10/2026): mediana', alquiler_regla: 'ICL cada 4 meses; contrato hasta 08/2028, después se asume renovación igual' } },
+        conservador: { minimo_con: -400000, mes_minimo_con: '2029-10', dias_bajo_piso: 120, cierre_con: -300000, quiebre: '2029-06-30' },
+        optimista: { minimo_con: 150000, mes_minimo_con: '2027-03', dias_bajo_piso: 3, cierre_con: 9000000, quiebre: null },
+      } } };
+  });
 }
