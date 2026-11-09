@@ -172,11 +172,12 @@ export function detalleCompromiso(c: Compromiso): Array<[string, string]> {
 
 function Proximos7({ items, hoy, irA }: { items: Compromiso[]; hoy?: string; irA: (t: string) => void }) {
   const hasta = hoy ? sumarDias(hoy, 7) : '';
-  const prox = items.filter((c) => !hoy || (c.fecha >= hoy && c.fecha <= hasta));
+  // Solo lo que todavía tiene monto a pagar (lo pagado o en $0 no se muestra)
+  const prox = items.filter((c) => (!hoy || (c.fecha >= hoy && c.fecha <= hasta)) && (c.monto_ars > 0 || c.monto_usd > 0));
   return (
     <section class="card" aria-label="Próximos 7 días" style="gap:4px">
       <div class="cardhead"><h2>Próximos 7 días</h2><button class="linkbtn" onClick={() => irA('compromisos')}>Ver todos</button></div>
-      {prox.length === 0 ? <div class="small">Nada en los próximos 7 días.</div> : (
+      {prox.length === 0 ? <div class="small">Nada por pagar en los próximos 7 días.</div> : (
         <ul class="rows">{prox.map((c) => <FilaCompromiso c={c} />)}</ul>
       )}
     </section>

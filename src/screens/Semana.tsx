@@ -63,8 +63,9 @@ function SnapshotCard({ d }: { d: Snapshot }) {
       </section>
       {d.es_actual !== false && <section class="card" aria-label="Próximos 7 días" style="gap:4px">
         <h2>Próximos 7 días</h2>
+        {d.compromisos_7d.items.filter((c) => c.monto_ars > 0 || c.monto_usd > 0).length === 0 && <div class="small">Nada por pagar en los próximos 7 días.</div>}
         <ul class="rows">
-          {d.compromisos_7d.items.map((c) => {
+          {d.compromisos_7d.items.filter((c) => c.monto_ars > 0 || c.monto_usd > 0).map((c) => {
             const nombre = c.tipo === 'fijo' ? 'Alquiler' : c.tarjeta || c.concepto;
             return (
               <li class="fila1">

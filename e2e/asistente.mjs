@@ -14,7 +14,7 @@ for (const scheme of ['dark', 'light']) {
   if (out && scheme === 'dark') await p.screenshot({ path: `${out}/asis-1-inicio.png` });
   await p.click('[data-testid="fab-asistente"]');
   await p.waitForSelector('[data-testid="hoja-asistente"]');
-  ok(await p.evaluate(() => document.activeElement?.id === 'asis-in'), 'el foco no está en el campo');
+  ok(await p.waitForFunction(() => document.activeElement?.id === 'asis-in', null, { timeout: 2000 }).then(() => true, () => false), 'el foco no está en el campo');
   ok(await p.isDisabled('[data-testid="asis-enviar"]'), 'enviar habilitado sin texto');
   await p.fill('[data-testid="asis-input"]', 'Quiero cambiar la moto, 36 cuotas de 300 mil');
   await p.click('[data-testid="asis-enviar"]');
