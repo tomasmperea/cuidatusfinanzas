@@ -194,6 +194,8 @@ export interface RespuestaIA {
   veredicto?: 'te_da' | 'ajustado' | 'no_te_da'; titulo?: string; chips?: string[]; recordar?: string;
   simulaciones?: { central: SimTarjeta; conservador?: SimRango; optimista?: SimRango };
 }
+export interface ConvResumen { id: string; ultimo: string; inicio: string; mensajes: number; pregunta: string | null; titulo: string | null; veredicto: string | null; guardado: boolean }
+export interface MsgGuardado { id: number; rol: 'usuario' | 'asistente'; contenido: any; guardado: boolean }
 export interface TurnoIA { id: number | null; respuesta: RespuestaIA; uso?: { consultas_hoy: number; tope_diario: number; costo_usd: number } }
 type AsistenteFn = (conversacion: string, mensaje: string) => Promise<TurnoIA>;
 
@@ -213,6 +215,8 @@ export function setAsistenteImpl(fn: AsistenteFn) { asistenteImpl = fn; }
 
 export const api = {
   asistente: (conversacion: string, mensaje: string) => asistenteImpl(conversacion, mensaje),
+  iaConversaciones: () => rpcImpl('rpc_ia_conversaciones', { p_limite: 30 }) as Promise<ConvResumen[]>,
+  iaConversacion: (id: string) => rpcImpl('rpc_ia_conversacion', { p_conversacion: id }) as Promise<MsgGuardado[]>,
   iaMarcar: (accion: 'guardar' | 'recordar' | 'olvidar', id: number | null, texto: string | null = null) =>
     rpcImpl('rpc_ia_marcar', { p_accion: accion, p_id: id, p_texto: texto }) as Promise<{ ok: boolean }>,
   caja: (cuenta: number) => rpcImpl('rpc_caja', { p_cuenta: cuenta }) as Promise<Caja>,

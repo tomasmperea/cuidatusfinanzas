@@ -18,6 +18,16 @@ export function activarFixtures(params: URLSearchParams) {
     if (fallan.includes('all') || fallan.includes(name)) throw new Error('Fallo simulado (modo desarrollo)');
     if (name.startsWith('rpc_mov_') || name === 'rpc_pendiente_descartar') return simularEscritura(name, args);
     if (name === 'rpc_ia_marcar') return { ok: true };
+    if (name === 'rpc_ia_conversaciones') return [
+      { id: '11111111-1111-4111-8111-111111111111', ultimo: '2026-11-08T20:00:00Z', inicio: '2026-11-08T19:58:00Z', mensajes: 4,
+        pregunta: 'Quiero cambiar la moto en 12 cuotas', titulo: 'Moto en 12 cuotas', veredicto: 'ajustado', guardado: true },
+      { id: '22222222-2222-4222-8222-222222222222', ultimo: '2026-11-07T15:00:00Z', inicio: '2026-11-07T14:59:00Z', mensajes: 2,
+        pregunta: '¿Dónde puedo recortar?', titulo: null, veredicto: null, guardado: false },
+    ];
+    if (name === 'rpc_ia_conversacion') return [
+      { id: 1, rol: 'usuario', contenido: { texto: '¿Dónde puedo recortar?' }, guardado: false },
+      { id: 2, rol: 'asistente', contenido: { tipo: 'respuesta', texto: 'Lo más recortable son las salidas y el delivery (texto de ejemplo).' }, guardado: false },
+    ];
     if (name === 'rpc_caja' && caja) return JSON.parse(JSON.stringify(caja));
     const res = await fetch(`/__fixtures/${ARCHIVO[name]}.json`);
     if (!res.ok) throw new Error(`Sin fixture para ${name}`);

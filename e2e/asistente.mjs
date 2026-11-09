@@ -49,6 +49,24 @@ for (const scheme of ['dark', 'light']) {
   // ojito: oculta montos de la tarjeta
   await ctx.close();
 }
+// historial: retomar una conversación guardada
+{
+  const p = await (await b.newContext({ viewport: { width: 390, height: 844 } })).newPage();
+  p.on('pageerror', (e) => errores.push(e.message));
+  await p.goto(`${base}?fixtures=1#inicio`);
+  await p.click('[data-testid="fab-asistente"]');
+  await p.waitForSelector('[data-testid="historial"] [data-testid="conv"]', { timeout: 5000 }).catch(() => fallas.push('el estado vacío no ofrece retomar'));
+  await p.click('[data-testid="btn-historial"]');
+  await p.waitForSelector('.asis-hist:not(.compacto) [data-testid="conv"]', { timeout: 5000 }).catch(() => {});
+  ok((await p.$$('.asis-hist:not(.compacto) [data-testid="conv"]')).length === 2, 'la lista completa no muestra 2 conversaciones');
+  if (out) await p.screenshot({ path: `${out}/asis-5-historial.png` });
+  await p.click('.asis-hist:not(.compacto) [data-testid="conv"] >> text=¿Dónde puedo recortar?');
+  await p.waitForSelector('.burb.yo', { timeout: 5000 }).catch(() => fallas.push('no cargó la conversación'));
+  ok((await p.textContent('.asis-lista')).includes('Lo más recortable'), 'no se ve la respuesta guardada');
+  ok(await p.isVisible('[data-testid="asis-input"]'), 'no se puede seguir escribiendo');
+  await p.click('[data-testid="nueva"]');
+  ok((await p.$$('.burb')).length === 0, 'Nueva no limpió la conversación retomada');
+}
 // ojito + error
 {
   const p = await (await b.newContext({ viewport: { width: 390, height: 844 } })).newPage();

@@ -1,7 +1,7 @@
 // Asistente "¿Me lo puedo permitir?" — botón flotante en Inicio + hoja de chat (diseño A).
 // Los números de la tarjeta salen de la simulación de la base (no del texto de la IA).
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { api, type RespuestaIA, type SimTarjeta } from '../api';
+import { api, type ConvResumen, type MsgGuardado, type RespuestaIA, type SimTarjeta } from '../api';
 import { estaOculto, fmtAbrev, fmtDia, fmtExacto, nombreMes, taparEnTexto } from '../format';
 import { Icon } from '../ui';
 
@@ -11,7 +11,7 @@ type Msg =
 
 // La conversación dura mientras la app está abierta (cerrar la hoja no la borra).
 let conv = { id: nuevoId(), msgs: [] as Msg[], uso: null as null | { consultas_hoy: number; tope_diario: number } };
-function nuevoId() { return crypto.randomUUID(); }
+function nuevoId(): string { return crypto.randomUUID(); }
 
 export function BotonAsistente() {
   const [abierto, setAbierto] = useState(false);
@@ -62,7 +62,23 @@ function HojaAsistente({ cerrar }: { cerrar: () => void }) {
       setPensando(false);
     }
   };
-  const nueva = () => { conv = { id: nuevoId(), msgs: [], uso }; setMsgs([]); input.current?.focus(); };
+  const nueva = () => { conv = { id: nuevoId(), msgs: [], uso }; setMsgs([]); setVista('chat'); setTimeout(() => input.current?.focus()); };
+  const [vista, setVista] = useState<'chat' | 'historial'>('chat');
+  const [cargando, setCargando] = useState(false);
+  const retomar = async (id: string) => {
+    if (id === conv.id) { setVista('chat'); return; }
+    setCargando(true);
+    try {
+      const ms = await api.iaConversacion(id);
+      const nuevos: Msg[] = ms.map((m: MsgGuardado) => m.rol === 'usuario'
+        ? { de: 'yo' as const, texto: String(m.contenido?.texto ?? '') }
+        : { de: 'ia' as const, id: m.id, r: m.contenido as RespuestaIA, guardado: m.guardado });
+      conv = { id, msgs: nuevos, uso };
+      setMsgs(nuevos);
+      setVista('chat');
+      setTimeout(() => input.current?.focus());
+    } catch { /* queda en la lista; se puede reintentar */ } finally { setCargando(false); }
+  };
   const marcar = async (i: number, accion: 'guardar' | 'recordar') => {
     const m = msgs[i];
     if (m.de !== 'ia') return;
@@ -78,16 +94,22 @@ function HojaAsistente({ cerrar }: { cerrar: () => void }) {
         <div class="grab" />
         <header class="asis-head">
           <Icon n="chispa" size={20} color="var(--accent)" />
-          <h2 id="asis-t">¿Me lo puedo permitir?</h2>
-          {msgs.length > 0 && <button class="linkbtn" onClick={nueva} data-testid="nueva">Nueva</button>}
+          <h2 id="asis-t">{vista === 'historial' ? 'Conversaciones' : '¿Me lo puedo permitir?'}</h2>
+          {vista === 'chat' && msgs.length > 0 && <button class="linkbtn" onClick={nueva} data-testid="nueva">Nueva</button>}
+          <button class="iconbtn" aria-label={vista === 'historial' ? 'Volver al chat' : 'Conversaciones anteriores'} aria-pressed={vista === 'historial'}
+            onClick={() => setVista(vista === 'historial' ? 'chat' : 'historial')} data-testid="btn-historial">
+            <Icon n={vista === 'historial' ? 'atras' : 'historial'} size={22} />
+          </button>
           <button class="iconbtn" aria-label="Cerrar" onClick={cerrar}><Icon n="cerrar" size={22} /></button>
         </header>
 
-        <div class="asis-lista" ref={lista} aria-live="polite">
+        {vista === 'historial' && <Historial actual={conv.id} elegir={retomar} cargando={cargando} limite={30} />}
+        <div class="asis-lista" ref={lista} aria-live="polite" hidden={vista !== 'chat'}>
           {msgs.length === 0 && (
             <div class="asis-vacio">
               <p class="small" style="margin:0">Contame qué querés comprar, financiar o invertir y lo proyecto con tus datos.</p>
               <div class="asis-chips">{SUGERENCIAS.map((s) => <button class="chip-g" onClick={() => setTexto(s + ': ')}>{s}</button>)}</div>
+              <Historial actual={conv.id} elegir={retomar} cargando={cargando} limite={3} verTodas={() => setVista('historial')} />
             </div>
           )}
           {msgs.map((m, i) => m.de === 'yo'
@@ -98,7 +120,7 @@ function HojaAsistente({ cerrar }: { cerrar: () => void }) {
             {uso && <span class="num" data-testid="uso">{uso.consultas_hoy}/{uso.tope_diario} hoy</span>}</div>
         </div>
 
-        <form class="asis-form" onSubmit={(e) => { e.preventDefault(); enviar(texto); }}>
+        <form class="asis-form" hidden={vista !== 'chat'} onSubmit={(e) => { e.preventDefault(); enviar(texto); }}>
           <label for="asis-in" class="sr">Tu consulta</label>
           <input id="asis-in" ref={input} value={texto} onInput={(e) => setTexto((e.target as HTMLInputElement).value)}
             placeholder={msgs.length ? 'Preguntá algo más…' : 'Escribí tu consulta…'} maxLength={1000} autocomplete="off" data-testid="asis-input" />
@@ -227,5 +249,41 @@ function Grafico({ s }: { s: SimTarjeta }) {
       <text x="0" y={H - 3} class="g-lbl">{mesCorto(pts[0].mes)}</text>
       <text x={W} y={H - 3} class="g-lbl" text-anchor="end">{mesCorto(pts[pts.length - 1].mes)}</text>
     </svg>
+  );
+}
+
+function Historial({ actual, elegir, cargando, limite, verTodas }: {
+  actual: string; elegir: (id: string) => void; cargando: boolean; limite: number; verTodas?: () => void;
+}) {
+  const [lista, setLista] = useState<ConvResumen[] | null>(null);
+  const [error, setError] = useState(false);
+  useEffect(() => { api.iaConversaciones().then(setLista, () => setError(true)); }, []);
+  const items = (lista ?? []).filter((c) => c.id !== actual).slice(0, limite);
+  if (verTodas && (!lista || items.length === 0)) return null; // en el estado vacío solo aparece si hay algo para retomar
+  return (
+    <section class={verTodas ? 'asis-hist compacto' : 'asis-hist'} aria-label="Conversaciones anteriores" data-testid="historial">
+      {verTodas && <h3 class="small" style="margin:8px 0 0;font-weight:650">Retomar una conversación</h3>}
+      {error && <p class="small">No pude cargar las conversaciones.</p>}
+      {!lista && !error && <p class="small">Cargando…</p>}
+      {lista && items.length === 0 && <p class="small">Todavía no hay conversaciones anteriores.</p>}
+      <ul class="rows">
+        {items.map((c) => {
+          const v = c.veredicto ? VEREDICTO[c.veredicto] : null;
+          return (
+            <li>
+              <button class="asis-conv" disabled={cargando} onClick={() => elegir(c.id)} data-testid="conv">
+                <span class="ell" style="flex:1;min-width:0;text-align:left">
+                  <span class="dos-lineas" style="display:block">{taparEnTexto(c.titulo || c.pregunta || 'Conversación')}</span>
+                  <span class="small">{fmtDia(new Date(c.ultimo).toLocaleDateString('sv-SE', { timeZone: 'America/Argentina/Buenos_Aires' }))}{c.guardado ? ' · guardada' : ''}</span>
+                </span>
+                {v && <span class={`v-tag ${v.cls}`}>{v.txt}</span>}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {verTodas && lista && lista.filter((c) => c.id !== actual).length > limite &&
+        <button class="linkbtn" onClick={verTodas} data-testid="ver-todas">Ver todas</button>}
+    </section>
   );
 }
