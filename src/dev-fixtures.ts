@@ -108,12 +108,14 @@ export function activarAsistenteFicticio(params: URLSearchParams) {
       texto: 'Te da, pero en marzo quedás bajo el piso unos días. Si arrancás después del aguinaldo, lo evitás.',
       simulaciones: {
         central: { meses, desde: serie[0].mes, hasta: serie[meses - 1].mes, piso: 200000, minimo_con: min.min_con, mes_minimo_con: min.mes,
-          minimo_sin: 1000000, mes_minimo_sin: serie[0].mes, dias_bajo_piso: 9, primer_dia_bajo_piso: '2027-03-22', quiebre: null,
+          minimo_sin: -265000, mes_minimo_sin: serie[0].mes, dias_bajo_piso: 9, primer_dia_bajo_piso: '2027-03-22', quiebre: null,
+          dias_bajo_piso_sin: 3, quiebre_sin: '2026-11-23', desde_fecha_compra: '2026-12-10', minimo_con_desde_compra: min.min_con,
+          minimo_sin_desde_compra: 1000000, mes_minimo_con_desde_compra: min.mes, egreso_recurrente_sobre_sueldo_pct: 9.6,
           cierre_con: 2500000, cierre_sin: 4000000, costo_total_escenario: 10800000, egreso_mensual_max_escenario: 300000,
           primer_egreso_sobre_sueldo_pct: 9.6, serie,
           supuestos: { sueldo_regla: 'sigue a la inflación con un aumento cada 3 meses', inflacion_mensual: 0.01657,
             inflacion_fuente: 'BCRA REM octubre 2026 (relevado 28-30/10/2026): mediana', alquiler_regla: 'ICL cada 4 meses; contrato hasta 08/2028, después se asume renovación igual' } },
-        conservador: { minimo_con: -400000, mes_minimo_con: '2029-10', dias_bajo_piso: 120, cierre_con: -300000, quiebre: '2029-06-30' },
+        conservador: { minimo_con: -400000, mes_minimo_con: '2029-10', dias_bajo_piso: 120, cierre_con: -300000, quiebre: '2029-06-30', minimo_con_desde_compra: -400000, minimo_sin_desde_compra: 100000, dias_bajo_piso_sin: 60 },
         optimista: { minimo_con: 150000, mes_minimo_con: '2027-03', dias_bajo_piso: 3, cierre_con: 9000000, quiebre: null },
       } } };
   });

@@ -184,10 +184,15 @@ export interface SimTarjeta {
   dias_bajo_piso: number; primer_dia_bajo_piso: string | null; quiebre: string | null;
   cierre_con: number; cierre_sin: number; costo_total_escenario: number; egreso_mensual_max_escenario: number;
   primer_egreso_sobre_sueldo_pct: number | null;
+  // efecto de la decisión (desde la fecha de la compra); opcionales en conversaciones guardadas antes del 09/11
+  egreso_recurrente_sobre_sueldo_pct?: number | null;
+  dias_bajo_piso_sin?: number; quiebre_sin?: string | null; desde_fecha_compra?: string | null;
+  minimo_con_desde_compra?: number; minimo_sin_desde_compra?: number; mes_minimo_con_desde_compra?: string | null;
   supuestos: Record<string, any>;
   serie: Array<{ mes: string; min_con: number; min_sin: number; dias: number }>;
 }
-export interface SimRango { minimo_con: number; mes_minimo_con: string; dias_bajo_piso: number; cierre_con: number; quiebre: string | null }
+export interface SimRango { minimo_con: number; mes_minimo_con: string; dias_bajo_piso: number; cierre_con: number; quiebre: string | null;
+  dias_bajo_piso_sin?: number; minimo_con_desde_compra?: number; minimo_sin_desde_compra?: number }
 export interface RespuestaIA {
   tipo: 'pregunta' | 'veredicto' | 'respuesta' | 'error'; texto: string;
   preguntas?: Array<{ texto: string; opciones: string[] }>;

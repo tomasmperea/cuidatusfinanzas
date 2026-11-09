@@ -2,7 +2,7 @@
 // Los números de la tarjeta salen de la simulación de la base (no del texto de la IA).
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { api, type ConvResumen, type MsgGuardado, type RespuestaIA, type SimTarjeta } from '../api';
-import { estaOculto, fmtAbrev, fmtDia, fmtExacto, nombreMes, taparEnTexto } from '../format';
+import { estaOculto, fmtAbrev, fmtDDMM, fmtDia, fmtExacto, nombreMes, taparEnTexto } from '../format';
 import { Icon } from '../ui';
 
 type Msg =
@@ -93,9 +93,8 @@ function HojaAsistente({ cerrar }: { cerrar: () => void }) {
       <section class="sheet asis" role="dialog" aria-modal="true" aria-labelledby="asis-t" data-testid="hoja-asistente">
         <div class="grab" />
         <header class="asis-head">
-          <Icon n="chispa" size={20} color="var(--accent)" />
           <h2 id="asis-t">{vista === 'historial' ? 'Conversaciones' : '¿Me lo puedo permitir?'}</h2>
-          {vista === 'chat' && msgs.length > 0 && <button class="linkbtn" onClick={nueva} data-testid="nueva">Nueva</button>}
+          {vista === 'chat' && msgs.length > 0 && <button class="iconbtn" aria-label="Nueva conversación" onClick={nueva} data-testid="nueva"><Icon n="plus" size={22} /></button>}
           <button class="iconbtn" aria-label={vista === 'historial' ? 'Volver al chat' : 'Conversaciones anteriores'} aria-pressed={vista === 'historial'}
             onClick={() => setVista(vista === 'historial' ? 'chat' : 'historial')} data-testid="btn-historial">
             <Icon n={vista === 'historial' ? 'atras' : 'historial'} size={22} />
@@ -194,8 +193,22 @@ function Veredicto({ r, s }: { r: RespuestaIA; s: SimTarjeta }) {
   const sup = s.supuestos ?? {};
   const cons = r.simulaciones?.conservador;
   const opt = r.simulaciones?.optimista;
-  const aria = `${v.txt}. ${r.titulo ?? ''}. Proyección a ${s.meses} meses. Liquidez mínima ${fmtExacto(s.minimo_con)} en ${mesCorto(s.mes_minimo_con)}. ` +
-    `${s.dias_bajo_piso} días bajo el piso. ${estaOculto() ? '' : r.texto}`;
+  // Efecto de la decisión: se mide desde la fecha de la compra y contra el mismo escenario sin ella.
+  const inc = s.minimo_con_desde_compra != null;
+  const desde = inc ? s.desde_fecha_compra ?? null : null;
+  const minCon = inc ? s.minimo_con_desde_compra! : s.minimo_con;
+  const minSin = inc ? s.minimo_sin_desde_compra ?? s.minimo_sin : s.minimo_sin;
+  const mesMin = (inc ? s.mes_minimo_con_desde_compra : null) ?? s.mes_minimo_con;
+  const diasExtra = inc ? Math.max(s.dias_bajo_piso - (s.dias_bajo_piso_sin ?? 0), 0) : null;
+  const quiebrePorCompra = s.quiebre && (!inc || !s.quiebre_sin || s.quiebre < s.quiebre_sin) ? s.quiebre : null;
+  const pctCuota = inc ? s.egreso_recurrente_sobre_sueldo_pct : s.primer_egreso_sobre_sueldo_pct;
+  const vallePrevio = inc && s.minimo_sin < s.piso && (!desde || s.mes_minimo_sin < desde.slice(0, 7));
+  const pesim = cons ? (cons.minimo_con_desde_compra ?? cons.minimo_con) : null;
+  const optim = opt ? (opt.minimo_con_desde_compra ?? opt.minimo_con) : null;
+  const lblMin = desde ? `Mínimo desde el ${fmtDDMM(desde)}` : 'Liquidez mínima';
+  const aria = `${v.txt}. ${r.titulo ?? ''}. Proyección a ${s.meses} meses. ${lblMin}: ${fmtExacto(minCon)} en ${mesCorto(mesMin)}; sin la compra ${fmtExacto(minSin)}. ` +
+    (diasExtra != null ? `${diasExtra} días extra bajo el piso por la compra. ` : `${s.dias_bajo_piso} días bajo el piso. `) +
+    `${estaOculto() ? '' : r.texto}`;
   return (
     <article class="asis-card" data-testid="veredicto" aria-label={aria}>
       <div class="asis-card-top" aria-hidden="true">
@@ -206,14 +219,18 @@ function Veredicto({ r, s }: { r: RespuestaIA; s: SimTarjeta }) {
       <div class="asis-txt" aria-hidden="true">{taparEnTexto(r.texto)}</div>
       <Grafico s={s} />
       <dl class="asis-datos num" aria-hidden="true">
-        <dt>Liquidez mínima</dt><dd>{fmtAbrev(s.minimo_con)} · {mesCorto(s.mes_minimo_con)}</dd>
-        <dt>Sin la compra</dt><dd>{fmtAbrev(s.minimo_sin)} · {mesCorto(s.mes_minimo_sin)}</dd>
-        <dt>Días bajo el piso</dt><dd>{s.dias_bajo_piso}</dd>
-        {s.quiebre && <><dt>Saldo negativo desde</dt><dd>{fmtDia(s.quiebre)}</dd></>}
-        {s.primer_egreso_sobre_sueldo_pct != null && <><dt>Cuota sobre sueldo</dt><dd>{String(s.primer_egreso_sobre_sueldo_pct).replace('.', ',')}%</dd></>}
-        {cons && <><dt>Mínimo pesimista</dt><dd>{fmtAbrev(cons.minimo_con)}</dd></>}
-        {opt && <><dt>Mínimo optimista</dt><dd>{fmtAbrev(opt.minimo_con)}</dd></>}
+        <dt>{lblMin}</dt><dd>{fmtAbrev(minCon)} · {mesCorto(mesMin)}</dd>
+        <dt>Sin la compra</dt><dd>{fmtAbrev(minSin)}</dd>
+        {diasExtra != null
+          ? <><dt>Días extra bajo el piso</dt><dd>{diasExtra > 0 ? `+${diasExtra}` : 'Ninguno'}</dd></>
+          : <><dt>Días bajo el piso</dt><dd>{s.dias_bajo_piso}</dd></>}
+        {quiebrePorCompra && <><dt>Saldo negativo desde</dt><dd>{fmtDia(quiebrePorCompra)}</dd></>}
+        {pctCuota != null && <><dt>Cuota sobre sueldo</dt><dd>{String(pctCuota).replace('.', ',')}%</dd></>}
+        {pesim != null && <><dt>Peor escenario</dt><dd>{fmtAbrev(pesim)}</dd></>}
+        {optim != null && <><dt>Mejor escenario</dt><dd>{fmtAbrev(optim)}</dd></>}
       </dl>
+      {vallePrevio && <p class="small" style="margin:0" data-testid="valle-previo" aria-hidden="true">
+        Aparte, sin la compra ya bajás a {fmtAbrev(s.minimo_sin)} en {mesCorto(s.mes_minimo_sin)}: eso no lo causa esta decisión.</p>}
       <details class="asis-sup">
         <summary>Supuestos usados</summary>
         <ul>
@@ -238,11 +255,14 @@ function Grafico({ s }: { s: SimTarjeta }) {
   const x = (i: number) => (i / (pts.length - 1)) * W;
   const y = (v: number) => 6 + (1 - (v - lo) / (hi - lo)) * (H - PB - 12);
   const linea = (k: 'min_con' | 'min_sin') => pts.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(p[k]).toFixed(1)}`).join(' ');
-  const iMin = pts.reduce((b, p, i) => (p.min_con < pts[b].min_con ? i : b), 0);
+  const iMesMin = s.mes_minimo_con_desde_compra ? pts.findIndex((p) => p.mes === s.mes_minimo_con_desde_compra) : -1;
+  const iMin = iMesMin >= 0 ? iMesMin : pts.reduce((b, p, i) => (p.min_con < pts[b].min_con ? i : b), 0);
+  const iCompra = s.desde_fecha_compra ? pts.findIndex((p) => p.mes === s.desde_fecha_compra!.slice(0, 7)) : -1;
   return (
     <svg class="asis-graf" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Liquidez mínima mes a mes, con y sin la compra, frente al piso">
       <line x1="0" x2={W} y1={y(s.piso)} y2={y(s.piso)} class="g-piso" />
       {lo < 0 && <line x1="0" x2={W} y1={y(0)} y2={y(0)} class="g-cero" />}
+      {iCompra > 0 && <line x1={x(iCompra)} x2={x(iCompra)} y1="4" y2={H - PB} class="g-compra" />}
       <path d={linea('min_sin')} class="g-sin" />
       <path d={linea('min_con')} class="g-con" />
       <circle cx={x(iMin)} cy={y(pts[iMin].min_con)} r="4" class="g-min" />

@@ -29,7 +29,10 @@ for (const scheme of ['dark', 'light']) {
   ok(yo[1]?.includes('No') && yo[1]?.includes('El mes que viene'), `respuesta combinada incorrecta: ${yo[1]}`);
   const card = await p.textContent('[data-testid="veredicto"]');
   ok(card.includes('Ajustado') && card.includes('39 meses'), 'tarjeta sin veredicto u horizonte');
-  ok(card.includes('Días bajo el piso') && card.includes('9,6%'), 'faltan datos en la tarjeta');
+  ok(card.includes('Días extra bajo el piso') && card.includes('+6') && card.includes('9,6%'), 'faltan datos incrementales en la tarjeta');
+  ok(card.includes('Mínimo desde el 10/12') && card.includes('Sin la compra'), 'falta el mínimo desde la compra');
+  ok(!card.includes('Saldo negativo desde'), 'muestra un saldo negativo que no causa la compra');
+  ok(await p.isVisible('[data-testid="valle-previo"]'), 'no aclara el valle que ya existía');
   ok(await p.isVisible('.asis-graf'), 'falta el gráfico');
   ok((await p.textContent('[data-testid="uso"]')).includes('/30'), 'falta el contador de consultas');
   await p.click('[data-testid="guardar"]');
