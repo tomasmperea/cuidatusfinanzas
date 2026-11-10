@@ -4,6 +4,7 @@ import { fmtAbrev, fmtDDMM, fmtDia, fmtEntero, fmtExacto, fmtPct, fmtUSD, normal
 import { Icon, Load, Monto, useAsync } from '../ui';
 import { SelectorEscenario } from './comunes';
 import { BotonAsistente } from './Asistente';
+import { TarjetaMetas } from './Metas';
 
 export function Inicio({ esc, setEsc, irA }: { esc: Escenario; setEsc: (e: Escenario) => void; irA: (t: string) => void }) {
   const kpis = useAsync(() => api.kpis(esc), [esc]);
@@ -23,6 +24,7 @@ export function Inicio({ esc, setEsc, irA }: { esc: Escenario; setEsc: (e: Escen
           </section>
         )}
       </Load>
+      <TarjetaMetas irA={irA} />
       {/* Ajustes preventivos: del escenario central; solo si el RPC devuelve ítems (máx. 3). */}
       {esc !== 'central' ? (
         <div class="pad small" data-testid="ajustes-central">Los ajustes se calculan sobre el escenario central.</div>

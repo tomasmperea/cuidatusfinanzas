@@ -47,6 +47,9 @@ let rpcImpl: RpcFn = async (name, args) => {
   return r.data;
 };
 
+/** RPC sin caché (para estados que cambian, como las notificaciones). */
+export function rpcDirecto<T>(name: string, args: Record<string, unknown> = {}): Promise<T> { return rpcImpl(name, args) as Promise<T>; }
+
 /** Solo para `vite dev` con fixtures (ver main.tsx). */
 export function setRpcImpl(fn: RpcFn) {
   rpcImpl = fn;
@@ -218,7 +221,48 @@ let asistenteImpl: AsistenteFn = async (conversacion, mensaje) => {
 /** Solo para `vite dev` con fixtures. */
 export function setAsistenteImpl(fn: AsistenteFn) { asistenteImpl = fn; }
 
+// ---------- Metas de ahorro (cada meta = % de la reserva: Fondos + dólares) ----------
+export type EstadoMeta = 'cumplida' | 'vencida' | 'atrasada' | 'en_riesgo' | 'en_camino';
+export interface Meta {
+  id: number; nombre: string; hipotetica?: boolean; objetivo: number; fecha_objetivo: string; pct: number;
+  avance: number; avance_pct: number; falta: number; meses_restantes: number;
+  necesario_mes: number | null; aporte_reserva_mes: number | null; esperado_hoy: number; desvio: number;
+  ritmo_mes: number; fecha_estimada: string | null;
+  proyeccion: { mes: string; margen_sobre_piso: number | null; necesitas_apartado: number; llega: boolean | null };
+  estado: EstadoMeta; base_fecha: string; creada: string;
+}
+export interface Reserva {
+  fondos_ars: number; usd: number; cotizacion: number | null; cotizacion_tipo: string; cotizacion_fecha: string | null;
+  cotizacion_vieja: boolean; usd_en_ars: number; total: number;
+}
+export interface Metas {
+  hoy: string; reserva: Reserva; ritmo_reserva_mes: number; piso: number;
+  asignado_pct: number; libre_pct: number; asignado: number; libre: number;
+  valle: { minimo: number; fecha: string; asignado_en_pesos: number; toca_metas: boolean };
+  metas: Meta[];
+  historial: Record<string, Array<{ fecha: string; avance: number }>>;
+  movimientos_reserva: Array<{ id: number; fecha: string; cuenta_id: number; moneda: string; monto: number; titulo: string }>;
+  archivadas: Array<{ id: number; nombre: string; objetivo: number; fecha_objetivo: string; pct: number; estado: string }>;
+}
+export interface MetaInput { id?: number | null; nombre: string; objetivo: number; fecha_objetivo: string; pct: number }
+export interface MetaSim { meta: Meta; otras: Array<{ id: number; nombre: string; pct: number }>; reserva: Reserva }
+
+// ---------- Avisos (campanita) ----------
+export type TipoAlerta = 'aumento' | 'suscripcion_nueva' | 'duplicado' | 'meta_desvio' | 'meta_en_riesgo' | 'metas_valle';
+export type EstadoAlerta = 'nueva' | 'vista' | 'validada' | 'descartada';
+export interface Alerta {
+  id: number; tipo: TipoAlerta; fecha: string; rubro: string | null; titulo: string; detalle: Record<string, any>;
+  estado: EstadoAlerta; resuelta_en: string | null;
+}
+export interface Alertas { nuevas: number; items: Alerta[] }
+
 export const api = {
+  metas: () => rpcImpl('rpc_metas', {}) as Promise<Metas>,
+  metaSimular: (m: MetaInput) => rpcImpl('rpc_meta_simular', { p: m }) as Promise<MetaSim>,
+  metaGuardar: (m: MetaInput) => escribir<{ ok: boolean; id: number }>('rpc_meta_guardar', { p: m }),
+  metaEstado: (id: number, estado: 'activa' | 'archivada') => escribir<{ ok: boolean }>('rpc_meta_estado', { p_id: id, p_estado: estado }),
+  alertas: () => rpcImpl('rpc_alertas', {}) as Promise<Alertas>,
+  alertaMarcar: (id: number, estado: EstadoAlerta) => rpcImpl('rpc_alerta_marcar', { p_id: id, p_estado: estado }) as Promise<{ ok: boolean; nuevas: number }>,
   asistente: (conversacion: string, mensaje: string) => asistenteImpl(conversacion, mensaje),
   iaConversaciones: () => rpcImpl('rpc_ia_conversaciones', { p_limite: 30 }) as Promise<ConvResumen[]>,
   iaConversacion: (id: string) => rpcImpl('rpc_ia_conversacion', { p_conversacion: id }) as Promise<MsgGuardado[]>,

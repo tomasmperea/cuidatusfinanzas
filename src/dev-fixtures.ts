@@ -29,6 +29,7 @@ export function activarFixtures(params: URLSearchParams) {
       { id: 2, rol: 'asistente', contenido: { tipo: 'respuesta', texto: 'Lo más recortable son las salidas y el delivery (texto de ejemplo).' }, guardado: false },
     ];
     if (name === 'rpc_caja' && caja) return JSON.parse(JSON.stringify(caja));
+    if (name.startsWith('rpc_meta') || name.startsWith('rpc_alerta') || name.startsWith('rpc_push_')) return simularMetasAvisos(name, args, params);
     const res = await fetch(`/__fixtures/${ARCHIVO[name]}.json`);
     if (!res.ok) throw new Error(`Sin fixture para ${name}`);
     let data = await res.json();
@@ -119,4 +120,102 @@ export function activarAsistenteFicticio(params: URLSearchParams) {
         optimista: { minimo_con: 150000, mes_minimo_con: '2027-03', dias_bajo_piso: 3, cierre_con: 9000000, quiebre: null },
       } } };
   });
+}
+
+// ---- Metas y avisos simulados (datos sintéticos, en memoria) ----
+const HOY = '2026-11-10';
+const RES = { fondos_ars: 450000, usd: 100, cotizacion: 1520, cotizacion_tipo: 'oficial compra', cotizacion_fecha: HOY, cotizacion_vieja: false, usd_en_ars: 152000, total: 602000 };
+let metasSim: any[] | null = null;
+let alertasSim: any[] = [];
+let sigMeta = 10;
+function iniciarSim(p: URLSearchParams) {
+  if (metasSim) return;
+  metasSim = p.get('metas') === '0' ? [] : [
+    { id: 1, nombre: 'Viaje', objetivo: 1500000, fecha_objetivo: '2027-06-30', pct: 0.7, base_fecha: '2026-09-01', base_avance: 150000, estado: 'activa' },
+    { id: 2, nombre: 'Fondo de emergencia', objetivo: 3000000, fecha_objetivo: '2027-12-31', pct: 0.3, base_fecha: '2026-11-10', base_avance: 180600, estado: 'activa' },
+  ];
+  alertasSim = p.get('avisos') === '0' ? [] : [
+    { id: 1, tipo: 'aumento', fecha: '2026-11-06', rubro: 'Servicios', titulo: 'Luz subió 8%', estado: 'nueva', resuelta_en: null,
+      detalle: { comercio: 'Luz', monto: 21600, monto_anterior: 20000, variacion_pct: 8, umbral_pct: 4.7 } },
+    { id: 2, tipo: 'suscripcion_nueva', fecha: '2026-10-20', rubro: 'Suscripciones', titulo: 'Suscripción nueva: Streaming', estado: 'nueva', resuelta_en: null,
+      detalle: { comercio: 'Streaming', monto: 9990, primera_vez: '2026-10-20', cargos: 1 } },
+    { id: 3, tipo: 'meta_desvio', fecha: HOY, rubro: 'Metas', titulo: 'Meta Viaje: vas atrasado', estado: 'vista', resuelta_en: null,
+      detalle: { meta_id: 1, nombre: 'Viaje', avance: 421400, esperado_hoy: 520000, objetivo: 1500000, fecha_objetivo: '2027-06-30', aporte_reserva_mes: 210000 } },
+    { id: 4, tipo: 'duplicado', fecha: '2026-11-02', rubro: 'Tarjeta', titulo: 'Posible cargo duplicado', estado: 'validada', resuelta_en: '2026-11-03T10:00:00Z',
+      detalle: { comercio: 'Comercio', monto: 5000, fechas: ['2026-11-01', '2026-11-02'] } },
+  ];
+}
+const dias = (a: string, b: string) => (Date.parse(b) - Date.parse(a)) / 86400000;
+function calcMeta(m: any, extra = false) {
+  const avance = Math.round(m.pct * RES.total);
+  const falta = Math.max(m.objetivo - avance, 0);
+  const meses = Math.max(dias(HOY, m.fecha_objetivo) / 30.4375, 0);
+  const f = Math.min(Math.max(dias(m.base_fecha, HOY) / Math.max(dias(m.base_fecha, m.fecha_objetivo), 1), 0), 1);
+  const esperado = Math.round(m.base_avance + (m.objetivo - m.base_avance) * f);
+  const llega = m.objetivo < 2500000;
+  const estado = avance >= m.objetivo ? 'cumplida' : avance < esperado - 0.1 * m.objetivo ? 'atrasada' : !llega ? 'en_riesgo' : 'en_camino';
+  return { id: m.id, nombre: m.nombre, hipotetica: extra, objetivo: m.objetivo, fecha_objetivo: m.fecha_objetivo, pct: m.pct, avance,
+    avance_pct: Math.round(1000 * avance / m.objetivo) / 10, falta, meses_restantes: Math.round(meses * 10) / 10,
+    necesario_mes: meses >= 0.5 ? Math.round(falta / meses) : null, aporte_reserva_mes: meses >= 0.5 ? Math.round(falta / meses / m.pct) : null,
+    esperado_hoy: esperado, desvio: avance - esperado, ritmo_mes: Math.round(m.pct * 120000), fecha_estimada: '2027-09-15',
+    proyeccion: { mes: m.fecha_objetivo.slice(0, 7), margen_sobre_piso: llega ? 2400000 : 1800000, necesitas_apartado: m.objetivo + 100000, llega },
+    estado, base_fecha: m.base_fecha, creada: m.base_fecha };
+}
+function estadoMetas() {
+  const act = metasSim!.filter((m) => m.estado === 'activa');
+  const tot = act.reduce((a, m) => a + m.pct, 0);
+  return { hoy: HOY, reserva: RES, ritmo_reserva_mes: 120000, piso: 200000, asignado_pct: tot, libre_pct: Math.max(1 - tot, 0),
+    asignado: Math.round(tot * RES.total), libre: Math.round(Math.max(1 - tot, 0) * RES.total),
+    valle: { minimo: -230000, fecha: '2026-11-30', asignado_en_pesos: Math.round(tot * RES.fondos_ars), toca_metas: act.length > 0 },
+    metas: act.map((m) => calcMeta(m)).sort((a, b) => a.fecha_objetivo.localeCompare(b.fecha_objetivo)),
+    historial: Object.fromEntries(act.map((m) => [String(m.id), [
+      { fecha: '2026-09-15', avance: Math.round(m.pct * 380000) }, { fecha: '2026-10-15', avance: Math.round(m.pct * 520000) }]])),
+    movimientos_reserva: [
+      { id: 1, fecha: '2026-11-01', cuenta_id: 101, moneda: 'ARS', monto: 80000, titulo: 'Desde Día a día' },
+      { id: 2, fecha: '2026-10-05', cuenta_id: 2, moneda: 'USD', monto: 50, titulo: 'Desde Día a día' }],
+    archivadas: metasSim!.filter((m) => m.estado !== 'activa').map((m) => ({ id: m.id, nombre: m.nombre, objetivo: m.objetivo, fecha_objetivo: m.fecha_objetivo, pct: m.pct, estado: m.estado })) };
+}
+function repartir(fijo: number | null) {
+  const act = metasSim!.filter((m) => m.estado === 'activa');
+  const f = act.find((m) => m.id === fijo)?.pct ?? 0;
+  const otras = act.filter((m) => m.id !== fijo);
+  const s = otras.reduce((a, m) => a + m.pct, 0);
+  if (s <= 0) { const x = act.find((m) => m.id === fijo); if (x) x.pct = 1; return; }
+  otras.forEach((m) => { m.pct = m.pct * (1 - f) / s; m.base_fecha = HOY; m.base_avance = Math.round(m.pct * RES.total); });
+}
+function simularMetasAvisos(name: string, a: any, params: URLSearchParams) {
+  iniciarSim(params);
+  if (name === 'rpc_metas') return estadoMetas();
+  if (name === 'rpc_meta_simular' || name === 'rpc_meta_guardar') {
+    const p = a.p;
+    if (!p.nombre?.trim() || !(p.objetivo > 0) || !(p.fecha_objetivo > HOY)) throw new Error('Datos inválidos');
+    const otras = metasSim!.filter((m) => m.estado === 'activa' && m.id !== p.id);
+    const pct = otras.length ? p.pct : 1;
+    if (otras.length && (pct < 0.01 || pct > 0.99)) throw new Error('Elegí un porcentaje entre 1% y 99%');
+    if (name === 'rpc_meta_simular') {
+      const s = otras.reduce((x, m) => x + m.pct, 0);
+      return { meta: calcMeta({ ...p, id: p.id ?? -1, pct, base_fecha: HOY, base_avance: pct * RES.total }, true),
+        otras: otras.map((m) => ({ id: m.id, nombre: m.nombre, pct: m.pct * (1 - pct) / s })), reserva: RES };
+    }
+    let id = p.id;
+    if (id) Object.assign(metasSim!.find((m) => m.id === id), { nombre: p.nombre, objetivo: p.objetivo, fecha_objetivo: p.fecha_objetivo, pct, base_fecha: HOY, base_avance: Math.round(pct * RES.total) });
+    else { id = ++sigMeta; metasSim!.push({ id, nombre: p.nombre, objetivo: p.objetivo, fecha_objetivo: p.fecha_objetivo, pct, base_fecha: HOY, base_avance: Math.round(pct * RES.total), estado: 'activa' }); }
+    repartir(id);
+    return { ok: true, id };
+  }
+  if (name === 'rpc_meta_estado') {
+    const m = metasSim!.find((x) => x.id === a.p_id);
+    if (a.p_estado === 'archivada') { m.estado = 'archivada'; repartir(null); }
+    else { const n = metasSim!.filter((x) => x.estado === 'activa').length; m.estado = 'activa'; m.pct = n ? Math.min(m.pct, 0.99) : 1; repartir(m.id); }
+    return { ok: true };
+  }
+  const nuevas = () => alertasSim.filter((x) => x.estado === 'nueva').length;
+  if (name === 'rpc_alertas') return { nuevas: nuevas(), items: JSON.parse(JSON.stringify(alertasSim)) };
+  if (name === 'rpc_alerta_marcar') {
+    const x = alertasSim.find((y) => y.id === a.p_id);
+    x.estado = a.p_estado; x.resuelta_en = ['validada', 'descartada'].includes(a.p_estado) ? new Date().toISOString() : null;
+    return { ok: true, nuevas: nuevas() };
+  }
+  if (name === 'rpc_push_estado') return { listo: false, activa: false };
+  return { ok: true };
 }

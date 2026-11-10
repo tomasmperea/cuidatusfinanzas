@@ -28,9 +28,13 @@ export function BotonAsistente() {
 
 const SUGERENCIAS = ['Cambiar la moto en cuotas', 'Un viaje', 'Invertir parte del aguinaldo'];
 
-function HojaAsistente({ cerrar }: { cerrar: () => void }) {
-  const [msgs, setMsgs] = useState<Msg[]>(conv.msgs);
-  const [texto, setTexto] = useState('');
+/** inicial: texto precargado (desde un aviso o una meta). Arranca una conversación nueva para ese tema. */
+export function HojaAsistente({ cerrar, inicial }: { cerrar: () => void; inicial?: string }) {
+  const [msgs, setMsgs] = useState<Msg[]>(() => {
+    if (inicial && conv.msgs.length) conv = { id: nuevoId(), msgs: [], uso: conv.uso };   // solo al abrir
+    return conv.msgs;
+  });
+  const [texto, setTexto] = useState(inicial ?? '');
   const [pensando, setPensando] = useState(false);
   const [uso, setUso] = useState(conv.uso);
   const lista = useRef<HTMLDivElement>(null);

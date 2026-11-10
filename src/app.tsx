@@ -8,6 +8,8 @@ import { Mes } from './screens/Mes';
 import { Compromisos } from './screens/Compromisos';
 import { Semana } from './screens/Semana';
 import { Caja } from './screens/Caja';
+import { PantallaMetas } from './screens/Metas';
+import { BotonCampana } from './screens/Avisos';
 
 const CLAVE_OCULTO = 'ctf_ocultar_saldos';
 function leerOculto(): boolean {
@@ -47,9 +49,14 @@ if (accionPendiente) {
   history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q : '') + '#caja');
 }
 function tomarAccion(): Accion | null { const a = accionPendiente; accionPendiente = null; return a; }
+/** Abre Caja con una hoja (lo usa "Apartar ahora" en el detalle de una meta). */
+export function irACajaCon(a: Accion) { accionPendiente = a; location.hash = 'caja'; scrollTo(0, 0); }
 
-function tabDeHash(): Tab {
+// Pantallas sin pestaña propia: Metas (desde Inicio) y avisos (#avisos abre Inicio con la campanita, lo usa el push)
+type Pantalla = Tab | 'metas';
+function tabDeHash(): Pantalla {
   const h = location.hash.replace('#', '').split('/')[0];
+  if (h === 'metas') return 'metas';
   return (TABS.find((t) => t.id === h)?.id ?? 'inicio') as Tab;
 }
 
@@ -65,10 +72,11 @@ export function App({ sinAuth = false }: { sinAuth?: boolean }) {
 }
 
 function Tablero() {
-  const [tab, setTab] = useState<Tab>(tabDeHash());
+  const [tab, setTab] = useState<Pantalla>(tabDeHash());
+  const [, setHashActual] = useState(location.hash);   // re-render al cambiar de #metas a #metas/3
   const [esc, setEsc] = useState<Escenario>('central');
   useEffect(() => {
-    const f = () => setTab(tabDeHash());
+    const f = () => { setTab(tabDeHash()); setHashActual(location.hash); };
     addEventListener('hashchange', f);
     return () => removeEventListener('hashchange', f);
   }, []);
@@ -81,7 +89,8 @@ function Tablero() {
   };
   const hoy = hoyAR();
   const diaHash = location.hash.split('/')[1];
-  const head: Record<Tab, [string, string]> = {
+  const head: Record<Pantalla, [string, string]> = {
+    metas: ['Metas', ''],
     inicio: [`Hoy · ${fmtDia(hoy)}`, ''],
     caja: ['Caja', ''],
     mes: ['Mes', ''],
@@ -93,7 +102,7 @@ function Tablero() {
       <div class="app">
         <header class="top">
           <div style="display:flex;flex-direction:column"><h1 class="disp">{head[tab][0]}</h1>{head[tab][1] && <div class="sub">{head[tab][1]}</div>}</div>
-          <div style="display:flex;gap:4px"><BotonOjito oculto={oculto} setOculto={cambiarOculto} /><BotonSalir icono={<Icon n="salir" size={22} />} /></div>
+          <div style="display:flex;gap:0"><BotonCampana /><BotonOjito oculto={oculto} setOculto={cambiarOculto} /><BotonSalir icono={<Icon n="salir" size={22} />} /></div>
         </header>
         <main class="screen" id="contenido" key={oculto ? 'oculto' : 'visible'}>
           {tab === 'inicio' && <Inicio esc={esc} setEsc={setEsc} irA={irA} />}
@@ -101,11 +110,12 @@ function Tablero() {
           {tab === 'mes' && <Mes esc={esc} setEsc={setEsc} diaInicial={diaHash} />}
           {tab === 'compromisos' && <Compromisos />}
           {tab === 'semana' && <Semana />}
+          {tab === 'metas' && <PantallaMetas id={diaHash ? Number(diaHash) || null : null} irA={irA} />}
         </main>
         <nav class="tabs" aria-label="Secciones">
           <div class="in">
             {TABS.map((t) => (
-              <button aria-current={tab === t.id ? 'page' : undefined} onClick={() => irA(t.id)} data-tab={t.id}>
+              <button aria-current={tab === t.id || (tab === 'metas' && t.id === 'inicio') ? 'page' : undefined} onClick={() => irA(t.id)} data-tab={t.id}>
                 <span class="pill"><Icon n={t.icono} size={22} /></span>{t.nombre}
               </button>
             ))}
