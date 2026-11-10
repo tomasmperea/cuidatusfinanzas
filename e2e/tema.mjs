@@ -1,23 +1,35 @@
-// Tema: sigue al sistema del teléfono (claro u oscuro). Sin switch y sin pedir la fuente afuera.
+// Tema: sigue al sistema; la luna/sol lo cambia cuando quiero y, si coincide con el sistema, vuelve a seguirlo.
 import { chromium } from 'playwright';
 const [base = 'http://localhost:5173/cuidatusfinanzas/'] = process.argv.slice(2);
+const OSC = 'rgb(20, 18, 26)', CLA = 'rgb(247, 244, 239)';
 const b = await chromium.launch();
 const fallas = [], errores = [];
 const ok = (c, m) => { if (!c) fallas.push(m); };
-for (const [esquema, esperado] of [['dark', 'rgb(20, 18, 26)'], ['light', 'rgb(247, 244, 239)']]) {
-  const p = await b.newPage({ viewport: { width: 390, height: 844 }, colorScheme: esquema });
-  p.on('pageerror', (e) => errores.push(e.message));
-  const externos = [];
-  p.on('request', (r) => { const u = new URL(r.url()); if (!['localhost', '127.0.0.1'].includes(u.hostname)) externos.push(u.hostname); });
-  await p.goto(`${base}?fixtures=1#inicio`);
-  await p.waitForSelector('[data-testid="kpi-liquidez"]');
-  const fondo = await p.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  ok(fondo === esperado, `con el sistema en ${esquema} el fondo es ${fondo}`);
-  ok(!(await p.$('[data-testid="tema"]')), 'quedó el switch de tema');
-  ok((await p.evaluate(() => getComputedStyle(document.body).fontFamily)).includes('Plus Jakarta'), 'fuente');
-  ok(!externos.some((h) => /google|gstatic/.test(h)), `pidió la fuente afuera: ${externos}`);
-  await p.close();
-}
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' });
+const p = await ctx.newPage();
+p.on('pageerror', (e) => errores.push(e.message));
+const externos = [];
+p.on('request', (r) => { const u = new URL(r.url()); if (!['localhost', '127.0.0.1'].includes(u.hostname)) externos.push(u.hostname); });
+const fondo = () => p.evaluate(() => getComputedStyle(document.body).backgroundColor);
+const guardado = () => p.evaluate(() => localStorage.getItem('ctf-tema'));
+await p.goto(`${base}?fixtures=1#inicio`);
+await p.waitForSelector('[data-testid="kpi-liquidez"]');
+ok(await fondo() === OSC, 'sistema oscuro → oscuro');
+await p.click('[data-testid="tema"]');
+ok(await fondo() === CLA, 'la luna/sol no pasa a claro');
+ok((await p.getAttribute('meta[name="theme-color"]', 'content')) === '#F7F4EF', 'barra del sistema no acompaña');
+await p.reload(); await p.waitForSelector('[data-testid="kpi-liquidez"]');
+ok(await fondo() === CLA, 'la elección no quedó guardada');
+await p.click('[data-testid="tema"]');
+ok(await fondo() === OSC && (await guardado()) === null, 'al volver al tema del sistema no vuelve a seguirlo');
+await p.emulateMedia({ colorScheme: 'light' });
+await p.waitForTimeout(200);
+ok(await fondo() === CLA, 'sin elección, no sigue el cambio del sistema a claro');
+ok((await p.getAttribute('[data-testid="tema"]', 'aria-label')) === 'Pasar a tema oscuro', 'el botón no se actualiza con el sistema');
+await p.click('[data-testid="tema"]');
+ok(await fondo() === OSC && (await guardado()) === 'oscuro', 'no fuerza oscuro con el sistema en claro');
+ok((await p.evaluate(() => getComputedStyle(document.body).fontFamily)).includes('Plus Jakarta'), 'fuente');
+ok(!externos.some((h) => /google|gstatic/.test(h)), `pidió la fuente afuera: ${externos}`);
 await b.close();
 if (errores.length) fallas.push(...errores);
 console.log(fallas.length ? 'FALLAS:\n- ' + fallas.join('\n- ') : 'tema OK');
