@@ -213,11 +213,33 @@ let asistenteImpl: AsistenteFn = async (conversacion, mensaje) => {
   if (error) {
     let msg = 'No pude responder ahora. Probá de nuevo en un rato.';
     const ctx = (error as { context?: Response }).context;
-    try { const j = ctx ? await ctx.json() : null; if (j?.mensaje) msg = j.mensaje; if (ctx?.status === 401 || ctx?.status === 403) { avisar(); } } catch { /* sin cuerpo */ }
+    const status = ctx instanceof Response ? ctx.status : 0;
+    try { const j = status ? await ctx!.json() : null; if (j?.mensaje) msg = j.mensaje; if (status === 401 || status === 403) { avisar(); } } catch { /* sin cuerpo */ }
+    // Se cortó la conexión (el teléfono suele cortar pedidos largos) pero la respuesta puede haberse guardado igual: se busca en la base
+    if (!status || status >= 502) {
+      const rec = await recuperarRespuesta(conversacion, mensaje);
+      if (rec) return rec;
+    }
     throw new Error(msg);
   }
   return data as TurnoIA;
 };
+
+/** Busca en la conversación guardada la respuesta a `mensaje` (hasta ~75 s, cada 5 s). */
+async function recuperarRespuesta(conversacion: string, mensaje: string): Promise<TurnoIA | null> {
+  for (let i = 0; i < 15; i++) {
+    try {
+      const msgs = (await rpcImpl('rpc_ia_conversacion', { p_conversacion: conversacion })) as MsgGuardado[];
+      let k = -1;
+      msgs.forEach((m, j) => { if (m.rol === 'usuario' && String(m.contenido?.texto ?? '').trim() === mensaje.trim()) k = j; });
+      if (k < 0) return null;                    // la pregunta ni llegó a registrarse: no hay nada que esperar
+      const r = msgs.slice(k + 1).find((m) => m.rol === 'asistente');
+      if (r) return { id: r.contenido?.tipo === 'error' ? null : r.id, respuesta: r.contenido as RespuestaIA };
+    } catch { /* se reintenta */ }
+    await new Promise((ok) => setTimeout(ok, 5000));
+  }
+  return null;
+}
 /** Solo para `vite dev` con fixtures. */
 export function setAsistenteImpl(fn: AsistenteFn) { asistenteImpl = fn; }
 
