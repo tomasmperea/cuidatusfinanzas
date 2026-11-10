@@ -9,6 +9,7 @@ import { Compromisos } from './screens/Compromisos';
 import { Semana } from './screens/Semana';
 import { Caja } from './screens/Caja';
 import { PantallaMetas } from './screens/Metas';
+import { aplicarTema, leerTema, type Tema } from './tema';
 import { BotonCampana } from './screens/Avisos';
 
 const CLAVE_OCULTO = 'ctf_ocultar_saldos';
@@ -23,6 +24,17 @@ function BotonOjito({ oculto, setOculto: cambiar }: { oculto: boolean; setOculto
     <button class="iconbtn" aria-pressed={oculto} aria-label={oculto ? 'Mostrar saldos' : 'Ocultar saldos'}
       title={oculto ? 'Mostrar saldos' : 'Ocultar saldos'} data-testid="ojito" onClick={() => cambiar(!oculto)}>
       <Icon n={oculto ? 'ojo-no' : 'ojo'} size={22} />
+    </button>
+  );
+}
+
+function BotonTema() {
+  const [t, setT] = useState<Tema>(leerTema());
+  const cambiar = () => { const n: Tema = t === 'oscuro' ? 'claro' : 'oscuro'; aplicarTema(n); setT(n); };
+  return (
+    <button class="iconbtn" aria-label={t === 'oscuro' ? 'Pasar a tema claro' : 'Pasar a tema oscuro'}
+      title={t === 'oscuro' ? 'Tema claro' : 'Tema oscuro'} data-testid="tema" onClick={cambiar}>
+      <Icon n={t === 'oscuro' ? 'sol' : 'luna'} size={20} />
     </button>
   );
 }
@@ -102,7 +114,7 @@ function Tablero() {
       <div class="app">
         <header class="top">
           <div style="display:flex;flex-direction:column"><h1 class="disp">{head[tab][0]}</h1>{head[tab][1] && <div class="sub">{head[tab][1]}</div>}</div>
-          <div style="display:flex;gap:0"><BotonCampana /><BotonOjito oculto={oculto} setOculto={cambiarOculto} /><BotonSalir icono={<Icon n="salir" size={22} />} /></div>
+          <div class="acciones"><BotonCampana /><BotonOjito oculto={oculto} setOculto={cambiarOculto} /><BotonTema /><BotonSalir icono={<Icon n="salir" size={20} />} /></div>
         </header>
         <main class="screen" id="contenido" key={oculto ? 'oculto' : 'visible'}>
           {tab === 'inicio' && <Inicio esc={esc} setEsc={setEsc} irA={irA} />}

@@ -1,6 +1,10 @@
 import { render } from 'preact';
 import { App } from './app';
+import '@fontsource-variable/plus-jakarta-sans';
 import './styles.css';
+import { aplicarTema, leerTema } from './tema';
+
+aplicarTema(leerTema());   // antes de dibujar, para que no parpadee
 
 async function arrancar() {
   let sinAuth = false;

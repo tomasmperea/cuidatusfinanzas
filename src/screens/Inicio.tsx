@@ -99,16 +99,17 @@ function KpiGrid({ k }: { k: Kpis }) {
   const conTend = t && t.direccion !== 'sin_datos' && t.delta != null;
   return (
     <section class="kpis" aria-label="Indicadores">
-      <div class="kpi">
-        <div class="eyebrow">Liquidez</div>
+      <div class="kpi hero" data-testid="kpi-liquidez">
+        <svg class="blob" width="150" height="150" viewBox="0 0 150 150" aria-hidden="true"><path d="M75 5c18 0 22 18 38 26s34 6 34 30-18 24-22 40-6 44-32 44-26-20-42-28S3 112 3 88s16-26 20-42S47 5 75 5z" fill="#FFFFFF" /></svg>
+        <div class="eyebrow">Tenés hoy</div>
         <Monto n={k.liquidez_hoy} titulo="Liquidez hoy" cls={`disp val ${k.liquidez_hoy < 0 ? 'warn' : ''}`} />
+        <div class="chips">
+          <Monto n={k.burn_rate.diario} titulo="Gasto promedio por día" cls="num"
+            extra={[['Por mes', fmtExacto(k.burn_rate.mensual)]]}><span>&nbsp;por día</span></Monto>
+        </div>
       </div>
       <div class="kpi">
-        <div class="eyebrow">Burn rate</div>
-        <Monto n={k.burn_rate.diario} titulo="Burn rate por día" cls="disp val warn"
-          extra={[['Por mes', fmtExacto(k.burn_rate.mensual)]]}><small>/día</small></Monto>
-      </div>
-      <div class="kpi">
+        <span class="ico" style="background:var(--p-menta);color:var(--p-menta-ink)" aria-hidden="true"><Icon n="cal" size={18} /></span>
         <div class="eyebrow">A 30 días</div>
         <Monto n={s30.saldo} titulo={`Saldo a 30 días (${fmtDia(s30.fecha)})`} cls={`disp val ${warn(s30.saldo)}`}
           extra={[
@@ -124,6 +125,7 @@ function KpiGrid({ k }: { k: Kpis }) {
         )}
       </div>
       <div class="kpi">
+        <span class="ico" style="background:var(--p-durazno);color:var(--p-durazno-ink)" aria-hidden="true"><Icon n="warn" size={18} /></span>
         <div class="eyebrow">Mínimo 90 días</div>
         <span style="display:flex;flex-wrap:wrap;align-items:center;column-gap:6px;min-width:0">
           <Monto n={k.minimo_90d.saldo} titulo={`Mínimo a 90 días (${fmtDia(k.minimo_90d.fecha)})`} cls={`disp val ${warn(k.minimo_90d.saldo)}`} />
