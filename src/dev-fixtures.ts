@@ -187,7 +187,7 @@ function repartir(fijo: number | null) {
 }
 function simularMetasAvisos(name: string, a: any, params: URLSearchParams) {
   iniciarSim(params);
-  if (name === 'rpc_metas') return estadoMetas();
+  if (name === 'rpc_metas') return params.get('lento') ? new Promise((ok) => setTimeout(() => ok(estadoMetas()), 900)) : estadoMetas();
   if (name === 'rpc_meta_simular' || name === 'rpc_meta_guardar') {
     const p = a.p;
     if (!p.nombre?.trim() || !(p.objetivo > 0) || !(p.fecha_objetivo > HOY)) throw new Error('Datos inválidos');

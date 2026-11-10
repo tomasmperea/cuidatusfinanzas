@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { api, type Meta, type MetaInput, type MetaSim, type Metas } from '../api';
 import { fmtAbrev, fmtDDMM, fmtExacto, fmtUSD, nombreMes, sumarDias } from '../format';
-import { Icon, Load, Monto, useAsync } from '../ui';
+import { Icon, Load, Monto, Skel, type Async } from '../ui';
 import { HojaAsistente } from './Asistente';
 import { avisosCambiaron } from './Avisos';
 import { irACajaCon } from '../app';
@@ -36,11 +36,26 @@ function Barra({ v, warn }: { v: number; warn?: boolean }) {
   return <div class="barra" aria-hidden="true"><i class={warn ? 'warn-bg' : ''} style={{ width: `${Math.max(0, Math.min(100, v))}%` }} /></div>;
 }
 
+// ---------- Datos con caché: al volver a una pantalla se muestra lo último al instante y se actualiza por detrás
+// (sin esto, la tarjeta de Inicio aparecía tarde y empujaba las de abajo)
+let cacheMetas: Metas | undefined;
+function useMetas(n = 0): Async<Metas> {
+  const [st, set] = useState<{ data?: Metas; error?: string; loading: boolean }>({ data: cacheMetas, loading: true });
+  const [k, setK] = useState(0);
+  useEffect(() => {
+    let vivo = true;
+    api.metas().then((d) => { cacheMetas = d; if (vivo) set({ data: d, loading: false }); })
+      .catch((e: unknown) => vivo && set((x) => (x.data ? { ...x, loading: false } : { error: e instanceof Error ? e.message : String(e), loading: false })));
+    return () => { vivo = false; };
+  }, [n, k]);
+  return { ...st, reload: () => setK((x) => x + 1) };
+}
+
 // ---------- Tarjeta en Inicio ----------
 export function TarjetaMetas({ irA }: { irA: (t: string) => void }) {
-  const m = useAsync(() => api.metas(), []);
+  const m = useMetas();
   if (m.error) return null;   // no es crítica: si falla, Inicio sigue igual
-  if (!m.data) return null;
+  if (!m.data) return <Skel h={132} />;   // reserva el lugar para que las tarjetas de abajo no salten
   const metas = m.data.metas;
   if (metas.length === 0) {
     return (
@@ -68,7 +83,7 @@ export function TarjetaMetas({ irA }: { irA: (t: string) => void }) {
 // ---------- Pantalla Metas (lista o detalle) ----------
 export function PantallaMetas({ id, irA }: { id: number | null; irA: (t: string) => void }) {
   const [n, setN] = useState(0);
-  const d = useAsync(() => api.metas(), [n]);
+  const d = useMetas(n);
   const [hoja, setHoja] = useState<null | { meta?: Meta }>(null);
   const recargar = () => { setN((x) => x + 1); avisosCambiaron(); };
   return (
@@ -95,9 +110,9 @@ function TarjetaReserva({ m }: { m: Metas }) {
   return (
     <section class="card" aria-label="Reserva" data-testid="reserva" style="gap:6px">
       <div class="eyebrow">Reserva</div>
-      <Monto n={r.total} titulo="Reserva (Fondos + dólares)" cls="disp big"
+      <div><Monto n={r.total} titulo="Reserva (Fondos + dólares)" cls="disp big"
         extra={[['Fondos', fmtExacto(r.fondos_ars)], ['Dólares', `${fmtUSD(r.usd)} · ${fmtExacto(r.usd_en_ars)}`],
-          ['Cotización', r.cotizacion ? `${fmtExacto(r.cotizacion)} (${r.cotizacion_tipo}${r.cotizacion_fecha ? ', ' + fmtDDMM(r.cotizacion_fecha) : ''})` : 'sin dato']]} />
+          ['Cotización', r.cotizacion ? `${fmtExacto(r.cotizacion)} (${r.cotizacion_tipo}${r.cotizacion_fecha ? ', ' + fmtDDMM(r.cotizacion_fecha) : ''})` : 'sin dato']]} /></div>
       <div class="kv-lin num small"><span>Fondos {fmtAbrev(r.fondos_ars)}</span><span>Dólares {fmtUSD(r.usd)}</span></div>
       {sinMetas
         ? <div class="kv-lin"><span>Libre para asignar</span><b class="num">{fmtAbrev(r.total)}</b></div>
