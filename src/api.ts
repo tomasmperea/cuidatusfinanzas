@@ -252,7 +252,9 @@ export type TipoAlerta = 'aumento' | 'suscripcion_nueva' | 'duplicado' | 'meta_d
 export type EstadoAlerta = 'nueva' | 'vista' | 'validada' | 'descartada';
 export interface Alerta {
   id: number; tipo: TipoAlerta; fecha: string; rubro: string | null; titulo: string; detalle: Record<string, any>;
-  estado: EstadoAlerta; resuelta_en: string | null;
+  estado: EstadoAlerta; resuelta_en: string | null; no_reconocida?: boolean;
+  cargo?: { tarjeta: string | null; fecha: string; monto: number; descripcion: string; cupon: string | null;
+            resumen_cierre: string | null; resumen_vencimiento: string | null; resumen_estado: string | null } | null;
 }
 export interface Alertas { nuevas: number; items: Alerta[] }
 
@@ -262,7 +264,7 @@ export const api = {
   metaGuardar: (m: MetaInput) => escribir<{ ok: boolean; id: number }>('rpc_meta_guardar', { p: m }),
   metaEstado: (id: number, estado: 'activa' | 'archivada') => escribir<{ ok: boolean }>('rpc_meta_estado', { p_id: id, p_estado: estado }),
   alertas: () => rpcImpl('rpc_alertas', {}) as Promise<Alertas>,
-  alertaMarcar: (id: number, estado: EstadoAlerta) => rpcImpl('rpc_alerta_marcar', { p_id: id, p_estado: estado }) as Promise<{ ok: boolean; nuevas: number }>,
+  alertaMarcar: (id: number, estado: EstadoAlerta | 'no_reconocida') => rpcImpl('rpc_alerta_marcar', { p_id: id, p_estado: estado }) as Promise<{ ok: boolean; nuevas: number }>,
   asistente: (conversacion: string, mensaje: string) => asistenteImpl(conversacion, mensaje),
   iaConversaciones: () => rpcImpl('rpc_ia_conversaciones', { p_limite: 30 }) as Promise<ConvResumen[]>,
   iaConversacion: (id: string) => rpcImpl('rpc_ia_conversacion', { p_conversacion: id }) as Promise<MsgGuardado[]>,

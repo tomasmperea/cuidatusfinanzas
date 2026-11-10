@@ -2,7 +2,7 @@
 // Los avisos los detecta la base cada hora. El push solo invita a abrir esta hoja (#avisos).
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { api, type Alerta, type Alertas, type EstadoAlerta } from '../api';
-import { fmtAbrev, fmtDDMM, nombreMes } from '../format';
+import { fmtAbrev, fmtDDMM, fmtExacto, nombreMes } from '../format';
 import { Icon } from '../ui';
 import { HojaAsistente } from './Asistente';
 import { activarPush, desactivarPush, estadoPush, probarPush, type EstadoPush } from '../push';
@@ -65,9 +65,11 @@ function HojaAvisos({ cerrar, setContador }: { cerrar: () => void; setContador: 
     return () => { removeEventListener('keydown', k); document.body.style.overflow = ''; };
   }, []);
 
-  const marcar = async (a: Alerta, estado: EstadoAlerta, msg?: string) => {
+  const marcar = async (a: Alerta, estado: EstadoAlerta | 'no_reconocida', msg?: string) => {
     // optimista: se mueve ya; si falla, se vuelve a leer
-    setD((x) => x && { ...x, items: x.items.map((i) => (i.id === a.id ? { ...i, estado } : i)) });
+    const nuevo: Partial<Alerta> = estado === 'no_reconocida' ? { estado: 'vista', no_reconocida: true }
+      : { estado, ...(estado === 'validada' ? { no_reconocida: false } : {}) };
+    setD((x) => x && { ...x, items: x.items.map((i) => (i.id === a.id ? { ...i, ...nuevo } : i)) });
     if (msg) setNota((x) => ({ ...x, [a.id]: msg }));
     try { const r = await api.alertaMarcar(a.id, estado); setContador(r.nuevas); setD((x) => x && { ...x, nuevas: r.nuevas }); }
     catch { cargar(); }
@@ -128,7 +130,7 @@ function HojaAvisos({ cerrar, setContador }: { cerrar: () => void; setContador: 
 }
 
 function TarjetaAviso({ a, nota, marcar, preguntar, irAMeta }: {
-  a: Alerta; nota?: string; marcar: (a: Alerta, e: EstadoAlerta, msg?: string) => void;
+  a: Alerta; nota?: string; marcar: (a: Alerta, e: EstadoAlerta | 'no_reconocida', msg?: string) => void;
   preguntar: (t: string) => void; irAMeta: (a: Alerta) => void;
 }) {
   const x = a.detalle ?? {};
@@ -137,7 +139,12 @@ function TarjetaAviso({ a, nota, marcar, preguntar, irAMeta }: {
   const ok = (txt = 'Está bien') => <button class="chip-g" onClick={() => marcar(a, 'validada')} data-testid="validar">{txt}</button>;
   const desc = <button class="chip-g" onClick={() => marcar(a, 'descartada')} data-testid="descartar">Descartar</button>;
   const preg = (t: string) => <button class="chip-g" onClick={() => { if (a.estado === 'nueva') marcar(a, 'vista'); preguntar(t); }} data-testid="preguntar"><Icon n="chispa" size={16} />Preguntar</button>;
-  const sinReconocer = 'Revisá el resumen de la tarjeta. Si no es tuyo, desconocelo con el banco. El aviso queda acá hasta que lo marques.';
+  const c = a.cargo;
+  const enTarjeta = c?.tarjeta ? ` · ${c.tarjeta}` : '';
+  // "No la reconozco": muestra el cargo completo (sale de la base, sin IA) y habilita mandarle el comercio al asistente
+  const noReconozco = <button class="chip-g" onClick={() => marcar(a, 'no_reconocida')} data-testid="no-reconozco">
+    {a.tipo === 'duplicado' ? 'Es un error' : 'No la reconozco'}</button>;
+  const pregCargo = c ? preg(`No reconozco el cargo de ${ver(c.monto)} del ${fmtDDMM(c.fecha)} en la ${c.tarjeta ?? 'tarjeta'}. ¿Qué puede ser y cómo lo desconozco?`) : null;
 
   switch (a.tipo) {
     case 'aumento':
@@ -145,12 +152,12 @@ function TarjetaAviso({ a, nota, marcar, preguntar, irAMeta }: {
       botones = <>{ok()}{preg(`Un gasto de ${a.rubro ?? 'servicios'} subió ${x.variacion_pct}% este mes (de ${ver(x.monto_anterior)} a ${ver(x.monto)}). ¿Cómo me afecta y qué me conviene hacer?`)}{desc}</>;
       break;
     case 'suscripcion_nueva':
-      detalle = `${fmtAbrev(x.monto)} por mes · primer cargo ${x.primera_vez ? fmtDDMM(x.primera_vez) : fmtDDMM(a.fecha)}`;
-      botones = <>{ok('Es mía')}<button class="chip-g" onClick={() => marcar(a, 'vista', sinReconocer)} data-testid="no-reconozco">No la reconozco</button></>;
+      detalle = `${fmtAbrev(x.monto)} por mes · primer cargo ${x.primera_vez ? fmtDDMM(x.primera_vez) : fmtDDMM(a.fecha)}${enTarjeta}`;
+      botones = a.no_reconocida ? <>{pregCargo}{ok('Ya lo resolví')}</> : <>{ok('Es mía')}{noReconozco}</>;
       break;
     case 'duplicado':
-      detalle = `${fmtAbrev(x.monto)} dos veces · ${(x.fechas ?? []).map((f: string) => fmtDDMM(f)).join(' y ')}`;
-      botones = <>{ok('Es correcto')}<button class="chip-g" onClick={() => marcar(a, 'vista', sinReconocer)} data-testid="no-reconozco">Es un error</button></>;
+      detalle = `${fmtAbrev(x.monto)} dos veces · ${(x.fechas ?? []).map((f: string) => fmtDDMM(f)).join(' y ')}${enTarjeta}`;
+      botones = a.no_reconocida ? <>{pregCargo}{ok('Ya lo resolví')}</> : <>{ok('Es correcto')}{noReconozco}</>;
       break;
     case 'meta_desvio':
       detalle = `Llevás ${fmtAbrev(x.avance)} y a esta altura tendrías que tener ${fmtAbrev(x.esperado_hoy)}` +
@@ -174,8 +181,31 @@ function TarjetaAviso({ a, nota, marcar, preguntar, irAMeta }: {
       <div class="aviso-tit">{a.estado === 'nueva' && <span class="punto-nuevo" aria-hidden="true" />}<b>{a.titulo}</b></div>
       <div class="small num">{detalle}</div>
       {nota && <div class="small warn" role="status">{nota}</div>}
+      {a.no_reconocida && c && <DetalleCargo c={c} />}
       <div class="asis-chips">{botones}</div>
     </article>
+  );
+}
+
+/** Cargo no reconocido: todo lo que hace falta para reclamarlo, y los pasos. */
+function DetalleCargo({ c }: { c: NonNullable<Alerta['cargo']> }) {
+  return (
+    <div class="box cargo" data-testid="detalle-cargo">
+      <dl class="num">
+        <dt>Tarjeta</dt><dd>{c.tarjeta ?? '—'}</dd>
+        <dt>Fecha</dt><dd>{fmtDDMM(c.fecha)}</dd>
+        <dt>Monto</dt><dd>{fmtExacto(c.monto)}</dd>
+        <dt>En el resumen figura</dt><dd>{c.descripcion}</dd>
+        {c.cupon && <><dt>Cupón</dt><dd>{c.cupon}</dd></>}
+        {c.resumen_vencimiento && <><dt>Resumen</dt><dd>cierre {c.resumen_cierre ? fmtDDMM(c.resumen_cierre) : '—'} · vence {fmtDDMM(c.resumen_vencimiento)}</dd></>}
+      </dl>
+      <ol class="pasos small">
+        {c.tarjeta && /\(de /i.test(c.tarjeta) && <li>La tarjeta es de otra persona: preguntale primero si es suyo.</li>}
+        <li>Si nadie lo reconoce, llamá al banco de la tarjeta y desconocé el cargo con la fecha, el monto y el cupón.</li>
+        <li>Hacelo pronto: hay un plazo para impugnar el resumen y corre desde que te llegó. El banco te confirma cuál es.</li>
+        <li>Si es una suscripción, pedí también la baja para que no se repita.</li>
+      </ol>
+    </div>
   );
 }
 

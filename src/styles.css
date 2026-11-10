@@ -290,3 +290,8 @@ li.fila1:has(.dos-lineas) { align-items: flex-start; padding-top: 10px; padding-
 .acciones-meta { display: flex; flex-direction: column; gap: 10px; }
 .campo { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 13.5px; }
 .campo input:not([type="range"]) { min-height: 48px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); color: var(--fg); padding: 0 14px; font: inherit; font-size: 16px; font-weight: 400; }
+.box.cargo { display: flex; flex-direction: column; gap: 8px; }
+.box.cargo dl { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; font-size: 13px; }
+.box.cargo dt { color: var(--muted); }
+.box.cargo dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.pasos { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }

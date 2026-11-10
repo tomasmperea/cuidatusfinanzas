@@ -31,7 +31,17 @@ for (const scheme of ['dark', 'light']) {
   await p.waitForFunction(() => document.querySelectorAll('[data-testid="aviso-card"]').length === 2);
   await p.waitForFunction(() => document.querySelector('[data-testid="badge"]')?.textContent?.trim() === '1', null, { timeout: 2000 }).catch(() => fallas.push('el contador no bajó a 1'));
   await p.click('[data-testid="no-reconozco"]');
-  ok(await p.isVisible('text=desconocelo con el banco'), 'no explica qué hacer con una suscripción no reconocida');
+  await p.waitForSelector('[data-testid="detalle-cargo"]', { timeout: 2000 }).catch(() => fallas.push('no muestra el detalle del cargo'));
+  const cargo = await p.textContent('[data-testid="detalle-cargo"]');
+  ok(cargo.includes('Visa de prueba') && cargo.includes('01234') && cargo.includes('STREAMING SA') && cargo.includes('preguntale primero'), `detalle del cargo incompleto: ${cargo}`);
+  await foto('m2b-cargo');
+  await p.click('[data-testid="detalle-cargo"] >> xpath=ancestor::article >> [data-testid="preguntar"]');
+  await p.waitForSelector('[data-testid="hoja-asistente"]');
+  const preCargo = await p.inputValue('[data-testid="asis-input"]');
+  ok(preCargo.includes('No reconozco el cargo') && preCargo.includes('Visa de prueba'), `pregunta del cargo incorrecta: ${preCargo}`);
+  await p.waitForFunction(() => document.activeElement?.id === 'asis-in');
+  await p.keyboard.press('Escape');
+  await p.waitForSelector('[data-testid="hoja-avisos"]');
   await p.waitForFunction(() => !document.querySelector('[data-testid="badge"]'), null, { timeout: 2000 }).catch(() => fallas.push('el contador sigue visible con 0 nuevas'));
   await p.click('[data-testid="ver-revisados"]');
   ok(await p.isVisible('text=Está bien'), 'no lista los revisados');

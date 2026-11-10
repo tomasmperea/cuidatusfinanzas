@@ -138,7 +138,9 @@ function iniciarSim(p: URLSearchParams) {
     { id: 1, tipo: 'aumento', fecha: '2026-11-06', rubro: 'Servicios', titulo: 'Luz subió 8%', estado: 'nueva', resuelta_en: null,
       detalle: { comercio: 'Luz', monto: 21600, monto_anterior: 20000, variacion_pct: 8, umbral_pct: 4.7 } },
     { id: 2, tipo: 'suscripcion_nueva', fecha: '2026-10-20', rubro: 'Suscripciones', titulo: 'Suscripción nueva: Streaming', estado: 'nueva', resuelta_en: null,
-      detalle: { comercio: 'Streaming', monto: 9990, primera_vez: '2026-10-20', cargos: 1 } },
+      detalle: { comercio: 'Streaming', monto: 9990, primera_vez: '2026-10-20', cargos: 1 }, no_reconocida: false,
+      cargo: { tarjeta: 'Visa de prueba (de otra persona)', fecha: '2026-10-20', monto: 9990.5, descripcion: 'STREAMING SA', cupon: '01234',
+               resumen_cierre: '2026-10-23', resumen_vencimiento: '2026-11-04', resumen_estado: 'confirmado' } },
     { id: 3, tipo: 'meta_desvio', fecha: HOY, rubro: 'Metas', titulo: 'Meta Viaje: vas atrasado', estado: 'vista', resuelta_en: null,
       detalle: { meta_id: 1, nombre: 'Viaje', avance: 421400, esperado_hoy: 520000, objetivo: 1500000, fecha_objetivo: '2027-06-30', aporte_reserva_mes: 210000 } },
     { id: 4, tipo: 'duplicado', fecha: '2026-11-02', rubro: 'Tarjeta', titulo: 'Posible cargo duplicado', estado: 'validada', resuelta_en: '2026-11-03T10:00:00Z',
@@ -213,7 +215,9 @@ function simularMetasAvisos(name: string, a: any, params: URLSearchParams) {
   if (name === 'rpc_alertas') return { nuevas: nuevas(), items: JSON.parse(JSON.stringify(alertasSim)) };
   if (name === 'rpc_alerta_marcar') {
     const x = alertasSim.find((y) => y.id === a.p_id);
-    x.estado = a.p_estado; x.resuelta_en = ['validada', 'descartada'].includes(a.p_estado) ? new Date().toISOString() : null;
+    if (a.p_estado === 'no_reconocida') { x.estado = 'vista'; x.no_reconocida = true; }
+    else { x.estado = a.p_estado; if (a.p_estado === 'validada') x.no_reconocida = false; }
+    x.resuelta_en = ['validada', 'descartada'].includes(a.p_estado) ? new Date().toISOString() : null;
     return { ok: true, nuevas: nuevas() };
   }
   if (name === 'rpc_push_estado') return { listo: false, activa: false };
