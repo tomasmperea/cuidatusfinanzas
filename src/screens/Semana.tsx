@@ -32,19 +32,21 @@ function SnapshotCard({ d }: { d: Snapshot }) {
   const menos = d.desvio_neto < 0;
   return (
     <>
-      <section class="card" aria-label="Gasto de la semana" style="gap:6px">
-        <div class="cardhead">
-          <h2>Gasto</h2>
-          <Monto n={d.gasto_semana} titulo="Gasto de la semana" cls="disp"
+      <section class={`hero-card ${menos ? 'menta' : 'durazno'}`} aria-label="Gasto de la semana" data-testid="semana-gasto">
+        <div class="eyebrow">{d.en_curso ? 'Gastaste en lo que va de la semana' : 'Gastaste en la semana'}</div>
+        <div class="hero-num">
+          <Monto n={d.gasto_semana} titulo="Gasto de la semana" cls="num"
             extra={[['Promedio semanal', fmtExacto(d.promedio_semanal)], ['Desvío', fmtExacto(d.desvio_neto, { signoMas: true })], ['Desvío %', fmtPct(d.desvio_neto_pct, { signoMas: true })]]} />
         </div>
-        <div class="num" style="display:flex;align-items:center;gap:6px">
+        <div class="chips num">
           <span class="sr">{menos ? 'Gastaste menos que tu promedio' : 'Gastaste más que tu promedio'}: </span>
-          <Tri up={!menos} color={menos ? 'var(--good)' : 'var(--bad)'} />
-          <b class={menos ? 'good' : 'bad'}>{fmtAbrev(d.desvio_neto, { signoMas: true })}</b>
-          <span class="muted">vs. {d.en_curso ? 'esperado a hoy' : 'promedio'} {fmtAbrev(d.promedio_semanal)}</span>
+          <span><Tri up={!menos} color="currentColor" />{fmtAbrev(d.desvio_neto, { signoMas: true })} {menos ? 'menos' : 'más'}</span>
+          <span>vs. {d.en_curso ? 'esperado a hoy' : 'promedio'} {fmtAbrev(d.promedio_semanal)}</span>
         </div>
-        {d.desvios.length > 0 && (
+      </section>
+      {d.desvios.length > 0 && (
+        <section class="card" aria-label="Desvíos por categoría" style="gap:4px">
+          <h2>Por categoría</h2>
           <ul class="rows">
             {d.desvios.map((x) => {
               const mas = x.desvio > 0;
@@ -53,16 +55,17 @@ function SnapshotCard({ d }: { d: Snapshot }) {
                   <Tri up={mas} color={mas ? 'var(--bad)' : 'var(--good)'} />
                   <span class="sr">{mas ? 'Más en' : 'Menos en'}</span>
                   <span class="ell" style="font-weight:500">{x.categoria}</span>
-                  <Monto n={x.desvio} signoMas titulo={`${x.categoria}: desvío semanal`} cls={mas ? 'bad' : 'good'}
+                  <Monto n={x.desvio} signoMas titulo={`${x.categoria}: desvío semanal`} cls={`num ${mas ? 'bad' : 'good'}`}
                     extra={[['Esta semana', fmtExacto(x.real)], ['Promedio', fmtExacto(x.promedio)], ['Desvío', fmtPct(x.desvio_pct, { signoMas: true })]]} />
                 </li>
               );
             })}
           </ul>
-        )}
-      </section>
+        </section>
+      )}
       {d.es_actual !== false && <section class="card" aria-label="Próximos 7 días" style="gap:4px">
-        <h2>Próximos 7 días</h2>
+        <div class="cardhead"><h2>Próximos 7 días</h2>
+          <span class="tot"><Monto n={d.compromisos_7d.items.reduce((a, c) => a + c.monto_ars, 0)} titulo="A pagar en 7 días" cls="num" /></span></div>
         {d.compromisos_7d.items.filter((c) => c.monto_ars > 0 || c.monto_usd > 0).length === 0 && <div class="small">Nada por pagar en los próximos 7 días.</div>}
         <ul class="rows">
           {d.compromisos_7d.items.filter((c) => c.monto_ars > 0 || c.monto_usd > 0).map((c) => {

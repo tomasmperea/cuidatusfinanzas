@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { api, type CalDia, type Calendario, type Escenario, type IngresosEgresos, type LiquidezComprometida } from '../api';
 import { fmtAbrev, fmtCompacto, fmtDDMM, fmtDia, fmtDiaCap, fmtExacto, fmtMes, fmtPct, nombreMes } from '../format';
-import { Load, Monto, useAsync } from '../ui';
+import { Icon, Load, Monto, useAsync } from '../ui';
 import { SelectorEscenario } from './comunes';
 import { origenTexto } from './Inicio';
 
@@ -12,8 +12,8 @@ export function Mes({ esc, setEsc, diaInicial }: { esc: Escenario; setEsc: (e: E
   return (
     <>
       <div class="pad"><SelectorEscenario esc={esc} setEsc={setEsc} /></div>
-      <Load a={cal} que="el calendario" h={420}>{(c) => <CalendarioMes c={c} diaInicial={diaInicial} />}</Load>
       <Load a={ie} que="ingresos vs. egresos" h={220}>{(d) => <IngresosEgresosCard d={d} />}</Load>
+      <Load a={cal} que="el calendario" h={420}>{(c) => <CalendarioMes c={c} diaInicial={diaInicial} />}</Load>
       <Load a={lc} que="la liquidez comprometida" h={260}>{(d) => <Comprometida d={d} />}</Load>
     </>
   );
@@ -92,19 +92,29 @@ function IngresosEgresosCard({ d }: { d: IngresosEgresos }) {
     ['Fijos', -f.total, '', [['Tarjetas', fmtExacto(f.tarjetas)], ['Vivienda', fmtExacto(f.vivienda)], ['Servicios', fmtExacto(f.servicios)], ['Préstamos', fmtExacto(f.prestamos)]]],
     ['Variable', -t.gasto_variable, '', [['Real', fmtExacto(d.real.gasto_variable)], ['Proyectado', fmtExacto(d.proyectado.gasto_variable)]]],
   ];
+  const libre = t.liquidez_libre;
+  const ico = (n: string, c: string) => <span class="ico" style={`background:var(--p-${c});color:var(--p-${c}-ink)`} aria-hidden="true"><Icon n={n} size={16} /></span>;
   return (
-    <section class="card" aria-label={`Ingresos vs. egresos de ${nombreMes(d.mes)}, real hasta el ${fmtDDMM(d.real_hasta)} más proyectado`} style="gap:4px">
-      <h2>Ingresos vs. egresos</h2>
-      <ul class="rows">
-        {filas.map(([k, v, c, ex]) => (
-          <li class="fila1"><span class="ell" style="font-weight:500">{k}</span><Monto n={v} titulo={k} cls={c} signoMas extra={ex} /></li>
-        ))}
-        <li class="fila1"><span class="ell">Libre</span>
-          <Monto n={t.liquidez_libre} titulo="Liquidez libre del mes" cls={`disp ${t.liquidez_libre < 0 ? 'warn' : 'good'}`}
+    <>
+      <section class={`hero-card ${libre < 0 ? 'durazno' : 'menta'}`} data-testid="mes-libre"
+        aria-label={`Ingresos vs. egresos de ${nombreMes(d.mes)}, real hasta el ${fmtDDMM(d.real_hasta)} más proyectado`}>
+        <div class="eyebrow">{libre < 0 ? `Te falta en ${nombreMes(d.mes)}` : `Te queda libre en ${nombreMes(d.mes)}`}</div>
+        <div class="hero-num">
+          <Monto n={libre} titulo="Liquidez libre del mes" cls="num"
             extra={[['Otros ingresos', fmtExacto(t.otros_ingresos)], ['Con otros ingresos', fmtExacto(t.liquidez_libre_con_otros_ingresos)]]} />
-        </li>
-      </ul>
-    </section>
+        </div>
+        <div class="small">Ingresos menos fijos y gasto variable · real hasta el {fmtDDMM(d.real_hasta)}, después proyectado</div>
+      </section>
+      <div class="minis" aria-label="Detalle del mes">
+        {filas.map(([k, v, , ex], i) => (
+          <div class="mini">
+            {ico(['ingreso', 'casa', 'cart'][i], ['menta', 'durazno', 'cielo'][i])}
+            <span class="small">{k}</span>
+            <span class="v"><Monto n={v} titulo={k} cls="num" signoMas extra={ex} /></span>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -117,7 +127,9 @@ const CORTO: Record<string, string> = { tarjeta_resto: 'Tarjeta · resto', dispo
 function Comprometida({ d }: { d: LiquidezComprometida }) {
   return (
     <section class="card" aria-label="Liquidez comprometida" style="gap:6px">
-      <div class="cardhead"><h2>Liquidez comprometida</h2><span class="small num">de {fmtAbrev(d.ingreso_mensual)}</span></div>
+      <div class="cardhead"><h2>Liquidez comprometida</h2>
+        <span class="tot num">{fmtPct(d.grupos.filter((g) => g.grupo !== 'disponible_libre' && g.monto > 0).reduce((a, g) => a + g.pct_ingreso, 0))}</span></div>
+      <div class="small num" style="margin-top:-6px">del ingreso de {fmtAbrev(d.ingreso_mensual)} ya tiene destino</div>
       <div class="stack" aria-hidden="true">
         {d.grupos.filter((g) => g.monto > 0).map((g) => <span style={{ flex: `${Math.max(g.pct_ingreso, 0)} 1 0`, background: COLOR[g.grupo] || 'var(--muted)' }} />)}
       </div>

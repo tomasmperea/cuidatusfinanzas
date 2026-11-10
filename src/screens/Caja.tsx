@@ -93,13 +93,11 @@ export function Caja({ onCambio, accionInicial }: { onCambio?: () => void; accio
 function TarjetaLiquidez({ d, cuenta, setCuenta }: { d: CajaData; cuenta: number; setCuenta: (c: number) => void }) {
   const v = d.liquidez.var_mes;
   return (
-    <section class="card" aria-label="Liquidez" data-testid="liquidez-caja">
-      <div>
-        <div class="disp num" style="font-size:34px" data-testid="liquidez-valor">{fmtExacto(Math.round(d.liquidez.saldo))}</div>
-        <div class={`num trend ${v >= 0 ? 'good' : 'bad'}`} style="font-size:14px;font-weight:500">
-          <Tri up={v >= 0} color="currentColor" />{fmtAbrev(v, { signoMas: true })} este mes
-        </div>
-      </div>
+    <section class="hero-card" aria-label="Liquidez" data-testid="liquidez-caja">
+      <svg class="blob" width="150" height="150" viewBox="0 0 150 150" aria-hidden="true"><path d="M75 5c18 0 22 18 38 26s34 6 34 30-18 24-22 40-6 44-32 44-26-20-42-28S3 112 3 88s16-26 20-42S47 5 75 5z" fill="#FFFFFF" /></svg>
+      <div class="eyebrow">Liquidez</div>
+      <div class="hero-num num" data-testid="liquidez-valor">{fmtExacto(Math.round(d.liquidez.saldo))}</div>
+      <div class="chips"><span class="num"><Tri up={v >= 0} color="currentColor" />{fmtAbrev(v, { signoMas: true })} este mes</span></div>
       <div class="cuentas" role="group" aria-label="Cuenta">
         {d.cuentas.map((c: CuentaCaja) => (
           <button aria-pressed={cuenta === c.id} onClick={() => setCuenta(c.id)} data-cuenta={c.id}>

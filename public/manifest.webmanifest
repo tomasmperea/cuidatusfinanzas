@@ -8,8 +8,8 @@
   "id": "/cuidatusfinanzas/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#F3F4F6",
-  "theme_color": "#1B57CC",
+  "background_color": "#14121A",
+  "theme_color": "#14121A",
   "icons": [
     {
       "src": "icons/icon-192.png",

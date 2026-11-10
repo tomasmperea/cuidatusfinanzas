@@ -2,9 +2,8 @@ import { render } from 'preact';
 import { App } from './app';
 import '@fontsource-variable/plus-jakarta-sans';
 import './styles.css';
-import { aplicarTema, leerTema } from './tema';
-
-aplicarTema(leerTema());   // antes de dibujar, para que no parpadee
+// El tema (claro u oscuro) lo decide el sistema del teléfono. Se borra la preferencia del switch que hubo un día.
+try { localStorage.removeItem('ctf-tema'); } catch { /* sin almacenamiento */ }
 
 async function arrancar() {
   let sinAuth = false;

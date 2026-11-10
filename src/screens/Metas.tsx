@@ -108,23 +108,26 @@ function TarjetaReserva({ m }: { m: Metas }) {
   const r = m.reserva;
   const sinMetas = m.metas.length === 0;
   return (
-    <section class="card" aria-label="Reserva" data-testid="reserva" style="gap:6px">
-      <div class="eyebrow">Reserva</div>
-      <div><Monto n={r.total} titulo="Reserva (Fondos + dólares)" cls="disp big"
+    <>
+    <section class="hero-card cielo" aria-label="Reserva" data-testid="reserva">
+      <div class="eyebrow">Reserva para metas</div>
+      <div class="hero-num"><Monto n={r.total} titulo="Reserva (Fondos + dólares)" cls="num"
         extra={[['Fondos', fmtExacto(r.fondos_ars)], ['Dólares', `${fmtUSD(r.usd)} · ${fmtExacto(r.usd_en_ars)}`],
           ['Cotización', r.cotizacion ? `${fmtExacto(r.cotizacion)} (${r.cotizacion_tipo}${r.cotizacion_fecha ? ', ' + fmtDDMM(r.cotizacion_fecha) : ''})` : 'sin dato']]} /></div>
-      <div class="kv-lin num small"><span>Fondos {fmtAbrev(r.fondos_ars)}</span><span>Dólares {fmtUSD(r.usd)}</span></div>
-      {sinMetas
-        ? <div class="kv-lin"><span>Libre para asignar</span><b class="num">{fmtAbrev(r.total)}</b></div>
-        : <div class="split" aria-label="Reparto de la reserva entre metas">
-            {m.metas.map((x, i) => <i style={{ flex: x.pct, opacity: 1 - i * 0.18 }} title={`${x.nombre} ${pct(x.pct)}`} />)}
-          </div>}
+      <div class="chips num"><span>Fondos {fmtAbrev(r.fondos_ars)}</span><span>Dólares {fmtUSD(r.usd)}</span>
+        {sinMetas && <span>Libre para asignar {fmtAbrev(r.total)}</span>}</div>
+      {!sinMetas && <div class="split" aria-label="Reparto de la reserva entre metas">
+        {m.metas.map((x, i) => <i style={{ flex: x.pct, opacity: 1 - i * 0.22 }} title={`${x.nombre} ${pct(x.pct)}`} />)}
+      </div>}
       {!sinMetas && <div class="small">{m.metas.map((x) => `${x.nombre} ${pct(x.pct)}`).join(' · ')}</div>}
-      {r.cotizacion_vieja && <div class="small warn">La cotización del dólar tiene más de 5 días.</div>}
-      <div class="small">Lo apartado sigue contando en tu liquidez. Si un valle te obliga a usarlo, te aviso.</div>
-      {m.valle.toca_metas && <div class="small warn" role="status" data-testid="valle-metas">
-        El {fmtDDMM(m.valle.fecha)} tu liquidez baja a {fmtAbrev(m.valle.minimo)}: tendrías que usar plata de metas.</div>}
     </section>
+    <div class="pad small" style="display:flex;flex-direction:column;gap:4px">
+      {r.cotizacion_vieja && <span class="warn">La cotización del dólar tiene más de 5 días.</span>}
+      <span>Lo apartado sigue contando en tu liquidez. Si un valle te obliga a usarlo, te aviso.</span>
+      {m.valle.toca_metas && <span class="warn" role="status" data-testid="valle-metas">
+        El {fmtDDMM(m.valle.fecha)} tu liquidez baja a {fmtAbrev(m.valle.minimo)}: tendrías que usar plata de metas.</span>}
+    </div>
+    </>
   );
 }
 
@@ -176,21 +179,26 @@ function DetalleMeta({ m, meta, editar, recargar, irA }: { m: Metas; meta: Meta;
   const textoPreg = `Mi meta es juntar ${ver(meta.objetivo)} para ${mesLargo(meta.fecha_objetivo)}. Llevo ${ver(meta.avance)} (${pct(meta.pct)} de mi reserva). ¿Qué me conviene hacer para llegar?`;
   return (
     <>
-      <section class="card" aria-label={`Meta ${meta.nombre}`} data-testid="detalle-meta" style="gap:8px">
-        <div class="cardhead">
-          <h2 class="ell">{meta.nombre}</h2>
-          <span class={`chip ${e.cls === 'warn' ? 'chip-warn' : 'conf'}`}>{e.txt}</span>
+      <section class="hero-card" aria-label={`Meta ${meta.nombre}`} data-testid="detalle-meta">
+        <div class="eyebrow ell">{meta.nombre}</div>
+        <div class="hero-num"><Monto n={meta.avance} titulo="Apartado para la meta" cls="num" extra={[['% de la reserva', pct(meta.pct)], ['Reserva total', fmtExacto(m.reserva.total)]]} /></div>
+        <div class="chips num">
+          <span>{Math.round(meta.avance_pct)}% de {fmtAbrev(meta.objetivo)}</span>
+          <span>{mesLargo(meta.fecha_objetivo)}</span>
+          <span>{pct(meta.pct)} de la reserva</span>
+          <span>{e.txt}</span>
         </div>
-        <div class="small">Objetivo {fmtAbrev(meta.objetivo)} · {mesLargo(meta.fecha_objetivo)} · {pct(meta.pct)} de la reserva</div>
+      </section>
+      <div class="minis dos">
+        <div class="mini"><span class="small">Falta</span><span class="v"><Monto n={meta.falta} titulo="Falta para la meta" cls="num" /></span></div>
+        <div class="mini"><span class="small">Por mes a la reserva</span><span class="v">{meta.aporte_reserva_mes != null
+          ? <Monto n={meta.aporte_reserva_mes} titulo="Sumar a la reserva por mes" cls="num"
+              nota={meta.pct < 1 ? `Esta meta recibe el ${pct(meta.pct)} de la reserva: para que le lleguen ${fmtExacto(meta.necesario_mes)} por mes, la reserva tiene que crecer ${fmtExacto(meta.aporte_reserva_mes)}.` : undefined} />
+          : '—'}</span></div>
+      </div>
+      <section class="card" aria-label="Avance contra el plan" style="gap:6px">
+        <h2>Avance contra el plan</h2>
         <GraficoMeta meta={meta} hist={hist} hoy={m.hoy} />
-        <div class="kpis3">
-          <div><div class="eyebrow">Apartado</div><Monto n={meta.avance} titulo="Apartado para la meta" cls="disp" extra={[['% de la reserva', pct(meta.pct)], ['Reserva total', fmtExacto(m.reserva.total)]]} /></div>
-          <div><div class="eyebrow">Falta</div><Monto n={meta.falta} titulo="Falta para la meta" cls="disp" /></div>
-          <div><div class="eyebrow">Por mes</div>{meta.aporte_reserva_mes != null
-            ? <Monto n={meta.aporte_reserva_mes} titulo="Sumar a la reserva por mes" cls="disp"
-                nota={meta.pct < 1 ? `Esta meta recibe el ${pct(meta.pct)} de la reserva: para que le lleguen ${fmtExacto(meta.necesario_mes)} por mes, la reserva tiene que crecer ${fmtExacto(meta.aporte_reserva_mes)}.` : undefined} />
-            : <span class="disp">—</span>}</div>
-        </div>
       </section>
 
       <section class="card" aria-label="Pronóstico" data-testid="pronostico" style="gap:6px">
