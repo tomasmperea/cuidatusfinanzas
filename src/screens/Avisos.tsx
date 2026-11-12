@@ -2,7 +2,7 @@
 // Los avisos los detecta la base cada hora. El push solo invita a abrir esta hoja (#avisos).
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { api, type Alerta, type Alertas, type EstadoAlerta } from '../api';
-import { fmtAbrev, fmtDDMM, fmtExacto, nombreMes } from '../format';
+import { fmtAbrev, fmtDDMM, fmtExacto, fmtUSD, nombreMes } from '../format';
 import { Icon } from '../ui';
 import { HojaAsistente } from './Asistente';
 import { activarPush, desactivarPush, estadoPush, probarPush, type EstadoPush } from '../push';
@@ -84,6 +84,12 @@ function HojaAvisos({ cerrar, setContador }: { cerrar: () => void; setContador: 
     location.hash = a.detalle?.meta_id ? `metas/${a.detalle.meta_id}` : 'metas';
   };
 
+  const irA = (a: Alerta, hash: string) => {
+    if (a.estado === 'nueva') marcar(a, 'vista');
+    cerrar();
+    location.hash = hash;
+  };
+
   if (preguntar != null) return <HojaAsistente inicial={preguntar} cerrar={() => setPreguntar(null)} />;
 
   const abiertos = d?.items.filter((i) => i.estado === 'nueva' || i.estado === 'vista') ?? [];
@@ -102,7 +108,7 @@ function HojaAvisos({ cerrar, setContador }: { cerrar: () => void; setContador: 
           {!d && !error && <div class="skel" style="height:120px" aria-hidden="true" />}
           {d && abiertos.length === 0 && <div class="small" data-testid="sin-avisos">No tenés avisos para revisar.</div>}
           {abiertos.map((a) => (
-            <TarjetaAviso a={a} nota={nota[a.id]} marcar={marcar} preguntar={setPreguntar} irAMeta={irAMeta} />
+            <TarjetaAviso a={a} nota={nota[a.id]} marcar={marcar} preguntar={setPreguntar} irAMeta={irAMeta} irA={(h) => irA(a, h)} />
           ))}
           {revisados.length > 0 && (
             <div class="avisos-rev">
@@ -114,7 +120,8 @@ function HojaAvisos({ cerrar, setContador }: { cerrar: () => void; setContador: 
                   {revisados.map((a) => (
                     <li class="fila1">
                       <span class="ell">{a.titulo}</span>
-                      <span class="small">{a.estado === 'validada' ? 'Está bien' : 'Descartado'}</span>
+                      <span class="small">{a.estado === 'descartada' ? 'Descartado' : a.tipo !== 'vencimiento' ? 'Está bien'
+                        : a.detalle?.pagado_el ? `Pagado el ${fmtDDMM(a.detalle.pagado_el)}` : a.detalle?.reemplazada ? 'Actualizado' : 'Pagado'}</span>
                       <button class="linkbtn" onClick={() => marcar(a, 'vista')} aria-label={`Volver a revisar: ${a.titulo}`}>Volver</button>
                     </li>
                   ))}
@@ -129,9 +136,9 @@ function HojaAvisos({ cerrar, setContador }: { cerrar: () => void; setContador: 
   );
 }
 
-function TarjetaAviso({ a, nota, marcar, preguntar, irAMeta }: {
+function TarjetaAviso({ a, nota, marcar, preguntar, irAMeta, irA }: {
   a: Alerta; nota?: string; marcar: (a: Alerta, e: EstadoAlerta | 'no_reconocida', msg?: string) => void;
-  preguntar: (t: string) => void; irAMeta: (a: Alerta) => void;
+  preguntar: (t: string) => void; irAMeta: (a: Alerta) => void; irA: (hash: string) => void;
 }) {
   const x = a.detalle ?? {};
   let detalle = '';
@@ -175,9 +182,18 @@ function TarjetaAviso({ a, nota, marcar, preguntar, irAMeta }: {
       botones = <><button class="chip-g" onClick={() => irAMeta(a)}>Ver metas</button>
         {preg('La proyección dice que un valle me obligaría a usar plata de mis metas. ¿Cómo lo evito?')}{ok('Visto')}</>;
       break;
+    case 'vencimiento': {
+      // Provincia: "vence" es el reintegro (día 10) y el banco debita antes
+      const banco = x.vto_banco && x.vto_banco !== x.vence ? ` · el banco debita el ${fmtDDMM(x.vto_banco)}` : '';
+      const usd = x.monto_usd ? ` + ${fmtUSD(x.monto_usd)}` : '';
+      detalle = `${fmtExacto(x.monto)}${usd} · ${x.etapa === 'vencido' ? 'venció' : 'vence'} el ${fmtDDMM(x.vence)}${banco}`;
+      botones = <>{ok('Ya lo pagué')}
+        <button class="chip-g" onClick={() => irA('compromisos')} data-testid="ver-compromisos">Ver compromisos</button></>;
+      break;
+    }
   }
   return (
-    <article class={`aviso-card ${a.estado === 'nueva' ? 'nueva' : ''}`} data-testid="aviso-card" aria-label={`${a.estado === 'nueva' ? 'Nuevo: ' : ''}${a.titulo}`}>
+    <article class={`aviso-card${a.tipo === 'vencimiento' && x.etapa !== 'pronto' ? ' urgente' : ''} ${a.estado === 'nueva' ? 'nueva' : ''}`} data-testid="aviso-card" aria-label={`${a.estado === 'nueva' ? 'Nuevo: ' : ''}${a.titulo}`}>
       <div class="aviso-tit">{a.estado === 'nueva' && <span class="punto-nuevo" aria-hidden="true" />}<b>{a.titulo}</b></div>
       <div class="small num">{detalle}</div>
       {nota && <div class="small warn" role="status">{nota}</div>}

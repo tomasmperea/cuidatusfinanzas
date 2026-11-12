@@ -30,6 +30,7 @@ export function activarFixtures(params: URLSearchParams) {
     ];
     if (name === 'rpc_caja' && caja) return JSON.parse(JSON.stringify(caja));
     if (name.startsWith('rpc_meta') || name.startsWith('rpc_alerta') || name.startsWith('rpc_push_')) return simularMetasAvisos(name, args, params);
+    if (name === 'rpc_tarjetas_hoy') return tarjetasHoySim();
     const res = await fetch(`/__fixtures/${ARCHIVO[name]}.json`);
     if (!res.ok) throw new Error(`Sin fixture para ${name}`);
     let data = await res.json();
@@ -146,6 +147,21 @@ function iniciarSim(p: URLSearchParams) {
     { id: 4, tipo: 'duplicado', fecha: '2026-11-02', rubro: 'Tarjeta', titulo: 'Posible cargo duplicado', estado: 'validada', resuelta_en: '2026-11-03T10:00:00Z',
       detalle: { comercio: 'Comercio', monto: 5000, fechas: ['2026-11-01', '2026-11-02'] } },
   ];
+  if (p.get('venc') === '1') alertasSim.unshift(
+    { id: 5, tipo: 'vencimiento', fecha: HOY, rubro: 'Vencimientos', titulo: 'Gas vence el 13/11', estado: 'nueva', resuelta_en: null,
+      detalle: { item: 'gas:1', tipo_pago: 'gas', nombre: 'Gas', vence: '2026-11-13', monto: 16013, etapa: 'pronto' } },
+    { id: 6, tipo: 'vencimiento', fecha: HOY, rubro: 'Vencimientos', titulo: 'Tarjeta de prueba: venció el 08/11 y no figura pagado', estado: 'nueva', resuelta_en: null,
+      detalle: { item: 'tc:9', tipo_pago: 'tarjeta', nombre: 'Tarjeta de prueba', vence: '2026-11-08', vto_banco: '2026-11-02', monto: 250000, monto_usd: 12.5, etapa: 'vencido' } }
+  );
+}
+function tarjetasHoySim() {
+  const t = (id: number, nombre: string, banco: string, cierre: string, paga: string, despues: string, reintegro = false, vto = paga) =>
+    ({ id, nombre, banco, cierre, vto_banco: vto, cierre_estado: 'anunciado', paga, dias: Math.round(dias(HOY, paga)), paga_despues_cierre: despues, reintegro });
+  return { hoy: HOY, tarjetas: [
+    t(4, 'Visa de prueba (de otra persona)', 'Banco A', HOY, '2026-12-10', '2027-01-08', true, '2026-11-24'),
+    t(2, 'Amex de prueba', 'Banco B', '2026-11-26', '2026-12-09', '2027-01-11'),
+    t(1, 'Visa de prueba', 'Banco B', '2026-11-26', '2026-12-04', '2027-01-08'),
+  ] };
 }
 const dias = (a: string, b: string) => (Date.parse(b) - Date.parse(a)) / 86400000;
 function calcMeta(m: any, extra = false) {

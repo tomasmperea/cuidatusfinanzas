@@ -3,6 +3,7 @@ import { api, type Caja as CajaData, type CuentaCaja, type Flujo, type MovCaja, 
 import { aTexto, evaluar, mostrar, teclear, tieneOperacion, type Tecla } from '../calc';
 import { fmtAbrev, fmtDDMM, fmtDia, fmtExacto, fmtUSD, sumarDias } from '../format';
 import { Icon, Load, Tri, useAsync } from '../ui';
+import { TarjetasHoy } from './TarjetasHoy';
 
 const ICONO_GRUPO: Record<string, string> = {
   Supermercado: 'cart', Transporte: 'bus', Ocio: 'copa', Vestimenta: 'remera', Viajes: 'avion', 'Salud y belleza': 'salud',
@@ -53,6 +54,7 @@ export function Caja({ onCambio, accionInicial }: { onCambio?: () => void; accio
           <>
             <TarjetaLiquidez d={d} cuenta={cuenta} setCuenta={setCuenta} />
             <Atajos d={d} abrir={(h) => setHoja(h)} />
+            <TarjetasHoy />
             {d.pendientes.length > 0 && (
               <section class="card pend" aria-label="Pagos a confirmar" data-testid="pendientes">
                 {d.pendientes.map((p) => (

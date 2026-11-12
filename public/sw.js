@@ -1,6 +1,6 @@
 // Service worker de CuidaTusFinanzas: cachea SOLO el shell de la app (HTML, JS, CSS, íconos)
 // del propio origen. NUNCA cachea respuestas de la API (Supabase) ni nada de otro origen.
-const CACHE = 'ctf-shell-v8';
+const CACHE = 'ctf-shell-v9';
 const BASE = new URL('./', self.location).pathname; // /cuidatusfinanzas/
 const SHELL = [BASE, BASE + 'manifest.webmanifest', BASE + 'icons/icon-192.png', BASE + 'icons/icon-512.png'];
 

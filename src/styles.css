@@ -363,3 +363,19 @@ li.fila1:has(.dos-lineas) { align-items: flex-start; padding-top: 10px; padding-
 .card .cardhead .tot, .card .cardhead .tot button { font-size: 22px; font-weight: 800; letter-spacing: -0.03em; }
 .hero-card .split i { background: currentColor; }
 .hero-card .ell { flex: none; max-width: 100%; }
+
+/* f13: vencimientos y ¿Qué tarjeta uso hoy? */
+.aviso-card.urgente { border-color: var(--bad); }
+.aviso-card.urgente .aviso-tit b { color: var(--bad); }
+.tarjetas-hoy { padding: 0; overflow: hidden; }
+.th-head { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; min-height: 56px; }
+.th-head:focus-visible { outline: 2px solid var(--fg); outline-offset: -2px; }
+.th-head > .ell { display: flex; flex-direction: column; }
+.th-mejor { font-size: 15px; }
+.tarjetas-hoy .rows { border-top: 1px solid var(--line); }
+.th-fila { padding: 10px 16px; display: flex; flex-direction: column; gap: 2px; }
+.th-dias { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.05; }
+.th-dias b { font-size: 22px; }
+.th-chev { display: inline-flex; transition: transform .2s; transform: rotate(90deg); color: var(--muted, currentColor); }
+.th-chev.abierta { transform: rotate(-90deg); }
+@media (prefers-reduced-motion: reduce) { .th-chev { transition: none; } }
