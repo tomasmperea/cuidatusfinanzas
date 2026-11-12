@@ -158,9 +158,11 @@ function tarjetasHoySim() {
   const t = (id: number, nombre: string, banco: string, cierre: string, paga: string, despues: string, reintegro = false, vto = paga) =>
     ({ id, nombre, banco, cierre, vto_banco: vto, cierre_estado: 'anunciado', paga, dias: Math.round(dias(HOY, paga)), paga_despues_cierre: despues, reintegro });
   return { hoy: HOY, tarjetas: [
-    t(4, 'Visa de prueba (de otra persona)', 'Banco A', HOY, '2026-12-10', '2027-01-08', true, '2026-11-24'),
-    t(2, 'Amex de prueba', 'Banco B', '2026-11-26', '2026-12-09', '2027-01-11'),
-    t(1, 'Visa de prueba', 'Banco B', '2026-11-26', '2026-12-04', '2027-01-08'),
+    // empate a propósito (mismo pago, distinto cierre), en el orden en que lo manda la base
+    t(5, 'MasterCard Banco A (de otra persona)', 'Banco A', '2026-11-17', '2026-12-10', '2027-01-08', true, '2026-12-01'),
+    t(4, 'Visa Banco A (extensión)', 'Banco A', HOY, '2026-12-10', '2027-01-08', true, '2026-11-24'),
+    t(2, 'AMEX Banco B', 'Banco B', '2026-11-26', '2026-12-09', '2027-01-11'),
+    t(1, 'Visa Banco B', 'Banco B', '2026-11-26', '2026-12-04', '2027-01-08'),
   ] };
 }
 const dias = (a: string, b: string) => (Date.parse(b) - Date.parse(a)) / 86400000;

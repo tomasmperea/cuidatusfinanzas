@@ -379,3 +379,5 @@ li.fila1:has(.dos-lineas) { align-items: flex-start; padding-top: 10px; padding-
 .th-chev { display: inline-flex; transition: transform .2s; transform: rotate(90deg); color: var(--muted, currentColor); }
 .th-chev.abierta { transform: rotate(-90deg); }
 @media (prefers-reduced-motion: reduce) { .th-chev { transition: none; } }
+.th-l1 { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.th-l1 > .num { white-space: nowrap; }

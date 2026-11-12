@@ -46,17 +46,18 @@ for (const scheme of ['dark', 'light']) {
   await p.goto(`${base}?fixtures=1#caja`);
   await p.waitForSelector('[data-testid="tarjetas-hoy"]', { timeout: 8000 }).catch(() => fallas.push('no aparece ¿Qué tarjeta uso hoy?'));
   const head = await p.textContent('[data-testid="tarjetas-hoy-toggle"]');
-  ok(/Visa de prueba \(de otra persona\)\s*30\s*días/.test(head), `la mejor no es la de más días: ${head}`);
+  ok(/Visa Banco A\s*30\s*días/.test(head), `en el empate no va primero la que cierra antes: ${head}`);
+  ok(!/\(/.test(head), 'el nombre corto conserva el paréntesis');
   ok(!(await p.$('[data-testid="tarjetas-hoy-lista"]')), 'arranca desplegada');
   await foto('v2-caja');
   await p.click('[data-testid="tarjetas-hoy-toggle"]');
   const lista = p.locator('[data-testid="tarjetas-hoy-lista"] li');
-  ok((await lista.count()) === 3, 'no lista 3 tarjetas');
-  const t0 = await lista.nth(0).textContent();
-  ok(/cierra hoy/.test(t0) && /reintegrás el 10\/12/.test(t0) && /después del cierre se paga el 08\/01/.test(t0) && /el banco debita el 24\/11/.test(t0),
-    `fila con reintegro incompleta: ${t0}`);
-  ok(/la pagás el 04\/12 \(24 días\)/.test(await lista.nth(2).textContent()), 'fila común incompleta');
-  ok(/cierra el 26\/11/.test(await lista.nth(1).textContent()), 'no muestra la fecha de cierre');
+  ok((await lista.count()) === 4, 'no lista 4 tarjetas');
+  const txt = await lista.allTextContents();
+  ok(/^Visa Banco A\s*30 días\s*Cierra hoy · pagás 10\/12$/.test(txt[0].trim()), `fila 1: ${txt[0]}`);
+  ok(/^Master Banco A\s*30 días\s*Cierra 17\/11 · pagás 10\/12$/.test(txt[1].trim()), `fila 2: ${txt[1]}`);
+  ok(/^Visa Banco B\s*24 días\s*Cierra 26\/11 · pagás 04\/12$/.test(txt[3].trim()), `fila 4: ${txt[3]}`);
+  ok(await p.evaluate(() => [...document.querySelectorAll('[data-testid="tarjetas-hoy"] .ell')].every((e) => e.scrollWidth <= e.clientWidth + 1)), 'hay nombres cortados');
   await foto('v3-caja-abierta');
   await sinDesborde(p, 'caja');
   // las otras funciones de Caja siguen ahí
