@@ -80,17 +80,20 @@ for (const scheme of ['dark', 'light']) {
   await p.waitForTimeout(400);
   ok((await p.textContent('[data-testid="liquidez-valor"]')).includes('896.673'), 'pago de tarjeta');
 
-  // 5) confirmar un pago "a confirmar"
-  await p.click('[data-testid="pendientes"] button.conf-btn');
-  await p.waitForSelector('[data-testid="hoja-registro"]');
-  const mp = await p.textContent('[data-testid="monto-reg"]');
-  ok(mp.includes('47.300'), `monto del mail: ${mp}`);
+  // 5) confirmar un pago "a confirmar" (franja → revisión de a uno; el detalle completo está en e2e/confirmar.mjs)
+  ok((await p.textContent('[data-testid="pendientes"]')).includes('2'), 'la franja cuenta 2 pendientes');
+  await p.click('[data-testid="pendientes"]');
+  await p.waitForSelector('[data-testid="hoja-confirmar"]');
+  ok((await p.textContent('[data-testid="conf-monto"]')).includes('47.300'), 'monto del mail');
   await p.screenshot({ path: `${out}/caja-confirmar-${s}.png` });
-  ok(await p.isVisible('[data-testid="categorias"]'), 'al confirmar sin categoría abre las categorías');
-  await p.click('[data-subcat="3"]');
-  await p.click('[data-testid="guardar"]');
+  ok(await p.isDisabled('[data-testid="conf-confirmar"]'), 'sin categoría no deja confirmar');
+  await p.click('[data-testid="conf-otra"]');
+  await p.click('[data-testid="conf-todas"] [data-subcat="3"]');
+  await p.click('[data-testid="conf-confirmar"]');
+  await p.waitForSelector('[data-testid="toast-paso"]');
+  await p.click('[data-testid="conf-cerrar"]');
   await p.waitForTimeout(400);
-  ok(!(await p.isVisible('[data-testid="pendientes"]')), 'el pendiente desaparece al confirmar');
+  ok((await p.textContent('[data-testid="pendientes"]')).includes('1'), 'queda 1 pendiente al confirmar el primero');
 
   // 6) transferencia a Dólares (dos montos)
   await p.click('[data-atajo="transferir"]');

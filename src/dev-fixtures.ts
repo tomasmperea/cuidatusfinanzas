@@ -65,13 +65,14 @@ function simularEscritura(name: string, a: any) {
     mover(m, 1);
     if (p.tipo === 'transferencia') { const d = cta(p.destino_id); d.saldo += p.monto_destino; if (p.destino_id !== 2) { caja.liquidez.saldo += p.monto_destino; caja.liquidez.var_mes += p.monto_destino; } }
     caja.movimientos.unshift(m);
-    if (p.evid_id) caja.pendientes = caja.pendientes.filter((x: any) => x.id !== p.evid_id);
+    if (p.evid_id) { (m as any)._evid = caja.pendientes.find((x: any) => x.id === p.evid_id); caja.pendientes = caja.pendientes.filter((x: any) => x.id !== p.evid_id); }
     return { ok: true, id: m.id, liquidez: caja.liquidez.saldo };
   }
   if (name === 'rpc_mov_borrar') {
-    if (a.p_deshacer) { const m = borrados.get(a.p_id); if (m) { mover(m, 1); caja.movimientos.unshift(m); } return { ok: true }; }
+    // como la base: al borrar, la conciliación libera el aviso del banco y vuelve a "a confirmar"
+    if (a.p_deshacer) { const m = borrados.get(a.p_id); if (m) { mover(m, 1); caja.movimientos.unshift(m); if (m._evid) caja.pendientes = caja.pendientes.filter((x: any) => x.id !== m._evid.id); } return { ok: true }; }
     const m = caja.movimientos.find((x: any) => x.id === a.p_id);
-    if (m) { mover(m, -1); borrados.set(m.id, m); caja.movimientos = caja.movimientos.filter((x: any) => x !== m); }
+    if (m) { mover(m, -1); borrados.set(m.id, m); caja.movimientos = caja.movimientos.filter((x: any) => x !== m); if (m._evid) caja.pendientes = [m._evid, ...caja.pendientes].sort((x: any, y: any) => (y.fecha + y.ts).localeCompare(x.fecha + x.ts)); }
     return { ok: true };
   }
   if (name === 'rpc_pendiente_descartar') {

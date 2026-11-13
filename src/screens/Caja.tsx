@@ -4,6 +4,7 @@ import { aTexto, evaluar, mostrar, teclear, tieneOperacion, type Tecla } from '.
 import { fmtAbrev, fmtDDMM, fmtDia, fmtExacto, fmtUSD, sumarDias } from '../format';
 import { Icon, Load, Tri, useAsync } from '../ui';
 import { TarjetasHoy } from './TarjetasHoy';
+import { FranjaConfirmar, HojaConfirmar, resumenPend, type Paso } from './Confirmar';
 
 const ICONO_GRUPO: Record<string, string> = {
   Supermercado: 'cart', Transporte: 'bus', Ocio: 'copa', Vestimenta: 'remera', Viajes: 'avion', 'Salud y belleza': 'salud',
@@ -21,6 +22,9 @@ type Hoja =
   | { modo: 'editar'; mov: MovCaja }
   | { modo: 'confirmar'; p: Pendiente };
 type Aviso = { texto: string; deshacer?: () => Promise<unknown> } | null;
+type Hecho = Paso & { tipo: 'conf' | 'desc'; deshacer: () => Promise<unknown>; movId?: number };
+type Revision = { items: Pendiente[]; idx: number; hechos: Hecho[]; editando: Pendiente | null; enviando: boolean; error: string };
+const pideConfirmar = () => /^#caja\/confirmar\b/.test(location.hash);
 
 export function Caja({ onCambio, accionInicial }: { onCambio?: () => void; accionInicial?: Flujo | null }) {
   const [cuenta, setCuenta] = useState(100);
@@ -35,6 +39,50 @@ export function Caja({ onCambio, accionInicial }: { onCambio?: () => void; accio
   useEffect(() => {
     if (accionPend && caja.data) { setHoja({ modo: "nuevo", tipo: accionPend, subcat: null }); setAccionPend(null); }
   }, [accionPend, caja.data]);
+
+  // Revisión de los movimientos a confirmar, de a uno
+  const [rev, setRev] = useState<Revision | null>(null);
+  const [nuevos, setNuevos] = useState<Set<number>>(new Set());
+  // lo resuelto en la revisión no se muestra mientras llegan los datos nuevos
+  const [resueltos, setResueltos] = useState<Set<number>>(new Set());
+  useEffect(() => { setResueltos(new Set()); }, [caja.data]);
+  const [entrarRevision, setEntrarRevision] = useState(pideConfirmar());
+  useEffect(() => {
+    const f = () => pideConfirmar() && setEntrarRevision(true);
+    addEventListener('hashchange', f);
+    return () => removeEventListener('hashchange', f);
+  }, []);
+  useEffect(() => {
+    if (!entrarRevision || !caja.data) return;
+    setEntrarRevision(false);
+    history.replaceState(null, '', '#caja');      // que "atrás" no vuelva a abrir la hoja
+    abrirRevision(caja.data);
+  }, [entrarRevision, caja.data]);
+  const abrirRevision = (d: CajaData) => {
+    const items = d.pendientes.filter((x) => !resueltos.has(x.id));
+    if (!items.length) return;
+    setHojaRaw(null); setAviso(null);
+    setRev({ items, idx: 0, hechos: [], editando: null, enviando: false, error: '' });
+  };
+  const terminar = (r: Revision) => {
+    setRev(null);
+    if (!r.hechos.length) return;
+    const c = r.hechos.filter((h) => h.tipo === 'conf').length, k = r.hechos.length - c;
+    const pl = (n: number, a: string) => `${n} ${a}${n === 1 ? '' : 's'}`;
+    const texto = 'Listo: ' + [c ? pl(c, 'confirmado') : '', k ? pl(k, 'descartado') : ''].filter(Boolean).join(' y ');
+    const hechos = [...r.hechos].reverse();
+    setResueltos(new Set(r.items.slice(0, r.idx).map((x) => x.id)));
+    setNuevos(new Set(r.hechos.map((h) => h.movId).filter((x): x is number => x != null)));
+    setAviso({ texto, deshacer: async () => { for (const h of hechos) await h.deshacer(); } });
+    recargar();
+  };
+  useEffect(() => { if (rev && rev.idx >= rev.items.length) terminar(rev); }, [rev]);
+  const registrar = (h: Hecho) => setRev((r) => r && ({ ...r, hechos: [...r.hechos, h], idx: r.idx + 1, editando: null, enviando: false, error: '' }));
+  const ejecutar = async (f: () => Promise<Hecho>) => {
+    setRev((r) => r && ({ ...r, enviando: true, error: '' }));
+    try { registrar(await f()); }
+    catch (e) { setRev((r) => r && ({ ...r, enviando: false, error: e instanceof Error ? e.message : 'No se pudo' })); }
+  };
 
   useEffect(() => {
     if (!aviso) return;
@@ -52,26 +100,14 @@ export function Caja({ onCambio, accionInicial }: { onCambio?: () => void; accio
       <Load a={caja} que="la caja" h={420}>
         {(d) => (
           <>
+            {(() => {
+              const n = d.pendientes.filter((x) => !resueltos.has(x.id)).length;
+              return n > 0 && <FranjaConfirmar n={n} abrir={() => abrirRevision(d)} />;
+            })()}
             <TarjetaLiquidez d={d} cuenta={cuenta} setCuenta={setCuenta} />
             <Atajos d={d} abrir={(h) => setHoja(h)} />
             <TarjetasHoy />
-            {d.pendientes.length > 0 && (
-              <section class="card pend" aria-label="Pagos a confirmar" data-testid="pendientes">
-                {d.pendientes.map((p) => (
-                  <div class="fila-pend">
-                    <Icon n="mail" size={20} color="var(--warn)" />
-                    <div class="ell">
-                      <div class="ell">{p.descripcion || 'Pago'}</div>
-                      <div class="small nw"><b class="num" style="color:var(--fg)">{fmtExacto(p.monto * p.signo)}</b> · {fmtDDMM(p.fecha)}{p.ts ? ' ' + p.ts.slice(11, 16) : ''}</div>
-                    </div>
-                    <button class="btn conf-btn" onClick={() => setHoja({ modo: 'confirmar', p })}>Confirmar</button>
-                    <button class="act" aria-label="Descartar" onClick={() => accion(() => api.descartarPendiente(p.id),
-                      { texto: 'Descartado', deshacer: () => api.descartarPendiente(p.id, true) })}><Icon n="tacho" size={18} /></button>
-                  </div>
-                ))}
-              </section>
-            )}
-            <Movimientos movs={d.movimientos} hoy={d.hoy}
+            <Movimientos movs={d.movimientos} hoy={d.hoy} nuevos={nuevos}
               editar={(m) => setHoja({ modo: 'editar', mov: m })}
               borrar={(m) => accion(() => api.borrarMov(m.id), { texto: 'Borrado', deshacer: () => api.borrarMov(m.id, true) })} />
             <button class="fab" aria-label="Registrar movimiento" data-testid="fab" onClick={() => setHoja({ modo: 'nuevo', tipo: 'gasto', subcat: null })}>
@@ -79,6 +115,36 @@ export function Caja({ onCambio, accionInicial }: { onCambio?: () => void; accio
             </button>
             {hoja && <HojaRegistro d={d} hoja={hoja} cuentaActual={cuenta} cerrar={() => setHoja(null)}
               listo={(r, deshacer) => { setHoja(null); setAviso({ texto: 'Guardado', deshacer }); recargar(); void r; }} />}
+            {rev && rev.idx < rev.items.length && !rev.editando && (() => {
+              const p = rev.items[rev.idx];
+              const titulo = resumenPend(p, d).titulo;
+              const ult = rev.hechos[rev.hechos.length - 1] ?? null;
+              return (
+                <HojaConfirmar d={d} p={p} pos={rev.idx + 1} total={rev.items.length} enviando={rev.enviando} error={rev.error} ultimo={ult}
+                  confirmar={(subcat) => ejecutar(async () => {
+                    const r = await api.guardarMov(movConfirmado(d, p, subcat));
+                    return { tipo: 'conf', texto: `Confirmado: ${titulo}`, movId: r.id, deshacer: () => api.borrarMov(r.id) };
+                  })}
+                  descartar={() => ejecutar(async () => {
+                    await api.descartarPendiente(p.id);
+                    return { tipo: 'desc', texto: `Descartado: ${titulo}`, deshacer: () => api.descartarPendiente(p.id, true) };
+                  })}
+                  editar={(subcat) => setRev({ ...rev, error: '', editando: { ...p, sugerencia: { ...p.sugerencia, subcat_id: subcat ?? undefined } } })}
+                  deshacer={async () => {
+                    if (!ult) return;
+                    setRev({ ...rev, enviando: true });
+                    try { await ult.deshacer(); setRev({ ...rev, hechos: rev.hechos.slice(0, -1), idx: rev.idx - 1, enviando: false, error: '' }); }
+                    catch (e) { setRev({ ...rev, enviando: false, error: e instanceof Error ? e.message : 'No se pudo deshacer' }); }
+                  }}
+                  cerrar={() => terminar(rev)} />
+              );
+            })()}
+            {rev?.editando && (
+              <HojaRegistro d={d} hoja={{ modo: 'confirmar', p: rev.editando }} cuentaActual={100} textoGuardar="Guardar y seguir"
+                cerrar={() => setRev({ ...rev, editando: null })}
+                listo={(r, deshacer) => registrar({ tipo: 'conf', texto: `Confirmado: ${resumenPend(rev.editando!, d).titulo}`, movId: r.id,
+                  deshacer: deshacer ?? (() => api.borrarMov(r.id)) })} />
+            )}
           </>
         )}
       </Load>
@@ -133,7 +199,7 @@ function etiquetaDia(f: string, hoy: string) {
   return fmtDia(f);
 }
 
-function Movimientos({ movs, hoy, editar, borrar }: { movs: MovCaja[]; hoy: string; editar: (m: MovCaja) => void; borrar: (m: MovCaja) => void }) {
+function Movimientos({ movs, hoy, nuevos, editar, borrar }: { movs: MovCaja[]; hoy: string; nuevos?: Set<number>; editar: (m: MovCaja) => void; borrar: (m: MovCaja) => void }) {
   const grupos = useMemo(() => {
     const g: Array<{ fecha: string; items: MovCaja[] }> = [];
     for (const m of movs) {
@@ -150,7 +216,7 @@ function Movimientos({ movs, hoy, editar, borrar }: { movs: MovCaja[]; hoy: stri
           <h2 class="dia">{etiquetaDia(g.fecha, hoy)}</h2>
           <ul class="rows">
             {g.items.map((m) => (
-              <li class="mv" data-mov={m.id}>
+              <li class={`mv${nuevos?.has(m.id) ? ' recien' : ''}`} data-mov={m.id}>
                 <span class="ic"><Icon n={iconoDe(m.grupo, m.subcat_id)} size={20} /></span>
                 <div class="ell"><div class="ell">{m.titulo}</div>{m.nota && m.nota !== m.titulo && <div class="small ell">{m.nota}</div>}</div>
                 <span class={`num nw amt${m.signo > 0 ? ' good' : ''}`}>{fmtMon(m.monto * m.signo, m.moneda)}</span>
@@ -195,6 +261,18 @@ function inicial(h: Hoja, d: CajaData, cuentaActual: number) {
     fecha: m.fecha, nota: m.nota && m.nota !== m.titulo ? m.nota : '' };
 }
 
+/** Lo mismo que guarda la hoja de registro al confirmar, sin pasar por la calculadora. */
+function movConfirmado(d: CajaData, p: Pendiente, subcat: number | null): MovInput {
+  const s = p.sugerencia;
+  const trf = s.tipo === 'transferencia';
+  return {
+    tipo: s.tipo, monto: p.monto, cuenta_id: 100, subcat_id: trf ? 1 : subcat,
+    destino_id: trf ? (s.destino_id ?? 101) : null, monto_destino: trf ? p.monto : null,
+    fecha: p.fecha < (d.desde ?? p.fecha) ? d.hoy : p.fecha,
+    nota: (s.nota ?? p.descripcion ?? '').trim() || null, evid_id: p.id,
+  };
+}
+
 const TECLAS: Array<[Tecla, string, string?]> = [
   ['7', '7'], ['8', '8'], ['9', '9'], ['/', '÷', 'Dividir'],
   ['4', '4'], ['5', '5'], ['6', '6'], ['*', '×', 'Multiplicar'],
@@ -202,8 +280,8 @@ const TECLAS: Array<[Tecla, string, string?]> = [
   [',', ','], ['0', '0'], ['del', '', 'Borrar'], ['+', '+', 'Sumar'],
 ];
 
-function HojaRegistro({ d, hoja, cuentaActual, cerrar, listo }: {
-  d: CajaData; hoja: Hoja; cuentaActual: number; cerrar: () => void;
+function HojaRegistro({ d, hoja, cuentaActual, cerrar, listo, textoGuardar = 'Guardar' }: {
+  d: CajaData; hoja: Hoja; cuentaActual: number; cerrar: () => void; textoGuardar?: string;
   listo: (r: { id: number }, deshacer?: () => Promise<unknown>) => void;
 }) {
   const ini = useMemo(() => inicial(hoja, d, cuentaActual), []);
@@ -363,7 +441,7 @@ function HojaRegistro({ d, hoja, cuentaActual, cerrar, listo }: {
               </button>
             ))}
             <button class="k op" aria-label="Igual" onClick={() => tecla('=')} data-k="=">=</button>
-            <button class="btn guardar" disabled={enviando} onClick={guardar} data-testid="guardar">{enviando ? 'Guardando…' : 'Guardar'}</button>
+            <button class="btn guardar" disabled={enviando} onClick={guardar} data-testid="guardar">{enviando ? 'Guardando…' : textoGuardar}</button>
           </div>
         )}
       </div>

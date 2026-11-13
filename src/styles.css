@@ -381,3 +381,26 @@ li.fila1:has(.dos-lineas) { align-items: flex-start; padding-top: 10px; padding-
 @media (prefers-reduced-motion: reduce) { .th-chev { transition: none; } }
 .th-l1 { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .th-l1 > .num { white-space: nowrap; }
+
+/* f14: movimientos a confirmar (franja + revisión de a uno) */
+.franja-conf { width: 100%; min-height: 56px; border-radius: 18px; background: var(--warn); color: var(--bg); padding: 0 14px; display: flex; align-items: center; gap: 12px; font-weight: 700; margin-bottom: 12px; text-align: left; }
+.franja-conf .fc-n { min-width: 28px; height: 28px; padding: 0 6px; box-sizing: border-box; border-radius: 14px; background: var(--bg); color: var(--warn); display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; }
+.franja-conf .fc-t { flex: 1; font-size: 15px; }
+.franja-conf .fc-r { font-size: 14px; font-weight: 600; opacity: .92; }
+.franja-conf:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.sheet.conf { gap: 12px; max-height: 92vh; overflow-y: auto; outline: none; padding-bottom: 24px; }
+.conf-top { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+.conf-top .act { width: 44px; height: 44px; margin: 0; border-radius: 14px; background: var(--bg); color: var(--fg); }
+.conf-monto { font-size: 44px; font-weight: 800; letter-spacing: -1.2px; line-height: 1; margin-top: 2px; }
+.conf-titulo { font-size: 20px; font-weight: 700; overflow-wrap: anywhere; }
+.conf-banco { border-radius: 16px; background: var(--bg); padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; overflow-wrap: anywhere; }
+.conf-cats { display: flex; flex-direction: column; gap: 8px; }
+.conf-cats .cat-fila, .conf-todas { display: flex; flex-wrap: wrap; gap: 8px; }
+.conf-todas { max-height: 52vh; overflow-y: auto; padding-bottom: 4px; }
+.link-btn { align-self: flex-start; min-height: 44px; display: inline-flex; align-items: center; gap: 6px; color: var(--accent); font-weight: 650; font-size: 14px; }
+.conf-acciones { display: flex; gap: 10px; }
+.conf-acciones .btn { min-height: 52px; border-radius: 16px; }
+.toast.toast-arriba { top: calc(16px + env(safe-area-inset-top)); bottom: auto; right: 16px; margin: 0 auto; }
+.mv.recien { background: color-mix(in srgb, var(--good, #2E9E6A) 14%, transparent); border-radius: 14px; }
+@media (prefers-reduced-motion: no-preference) { .mv.recien { transition: background 1.2s; } }
+.conf-acciones .btn:disabled { background: var(--line); color: var(--muted); border-color: transparent; cursor: default; }
