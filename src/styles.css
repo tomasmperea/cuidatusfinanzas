@@ -404,3 +404,7 @@ li.fila1:has(.dos-lineas) { align-items: flex-start; padding-top: 10px; padding-
 .mv.recien { background: color-mix(in srgb, var(--good, #2E9E6A) 14%, transparent); border-radius: 14px; }
 @media (prefers-reduced-motion: no-preference) { .mv.recien { transition: background 1.2s; } }
 .conf-acciones .btn:disabled { background: var(--line); color: var(--muted); border-color: transparent; cursor: default; }
+
+/* f15: pagos anulados */
+.mv.anulado .amt s { color: var(--muted); text-decoration-thickness: 2px; }
+.tag-anulado { font-weight: 700; color: var(--warn); }

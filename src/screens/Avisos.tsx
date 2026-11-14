@@ -182,6 +182,16 @@ function TarjetaAviso({ a, nota, marcar, preguntar, irAMeta, irA }: {
       botones = <><button class="chip-g" onClick={() => irAMeta(a)}>Ver metas</button>
         {preg('La proyección dice que un valle me obligaría a usar plata de mis metas. ¿Cómo lo evito?')}{ok('Visto')}</>;
       break;
+    case 'anulacion': {
+      const pago = x.fecha_pago ? `pago del ${fmtDDMM(x.fecha_pago)}` : 'pago';
+      const base = `${fmtExacto(x.monto)} · ${x.comercio ?? ''} · ${pago}, anulado el ${fmtDDMM(x.fecha_anulacion)}`;
+      detalle = x.etapa === 'revertido' ? `${base}. Ya está devuelto en tu liquidez${a.rubro && a.rubro !== 'Anulaciones' ? ` (en ${a.rubro})` : ''}.`
+        : x.etapa === 'sin_confirmar' ? `${base}. Como no lo habías confirmado, no cambia nada.`
+        : `${fmtExacto(x.monto)} · ${x.comercio ?? ''}, anulado el ${fmtDDMM(x.fecha_anulacion)}. Si ese pago lo cargaste a mano, borralo en Caja.`;
+      botones = <>{ok('Entendido')}
+        {x.etapa !== 'sin_confirmar' && <button class="chip-g" onClick={() => irA('caja')} data-testid="ver-caja">Ver en Caja</button>}</>;
+      break;
+    }
     case 'vencimiento': {
       // Provincia: "vence" es el reintegro (día 10) y el banco debita antes
       const banco = x.vto_banco && x.vto_banco !== x.vence ? ` · el banco debita el ${fmtDDMM(x.vto_banco)}` : '';

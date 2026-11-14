@@ -36,7 +36,17 @@ export function activarFixtures(params: URLSearchParams) {
     let data = await res.json();
     const esc = args.p_escenario as string | undefined;
     if (esc && data && !Array.isArray(data) && data[esc]) data = data[esc];
-    if (name === 'rpc_caja') { caja = data; return JSON.parse(JSON.stringify(caja)); }
+    if (name === 'rpc_caja') {
+      caja = data;
+      // ?anul=1: un pago confirmado que después se anuló, con su reversa (datos sintéticos)
+      if (new URLSearchParams(location.search).get('anul') === '1') {
+        const base = { fecha: caja.hoy, moneda: 'ARS', cuenta_id: 100, subcat_id: 28, titulo: 'Transporte', grupo: 'Transporte', contra_cuenta_id: null, contra_monto: null };
+        caja.movimientos.unshift(
+          { ...base, id: 9902, ts: caja.hoy + 'T11:30:00', monto: -7022, signo: -1, editable: false, reversa: true, anulado_el: null, nota: 'Anulación · MERPAGO VIAJES PRUEBA' },
+          { ...base, id: 9901, ts: caja.hoy + 'T11:26:00', monto: 7022, signo: -1, editable: true, reversa: false, anulado_el: caja.hoy, nota: 'MERPAGO VIAJES PRUEBA' });
+      }
+      return JSON.parse(JSON.stringify(caja));
+    }
     if (name === 'rpc_semana') return { ...data, es_actual: !args?.p_fecha, en_curso: false, dias: 7, hay_anterior: true };
     if (name === 'rpc_kpis' && backupDias) data = { ...data, backup: { ...data.backup, dias: Number(backupDias), estado: 'viejo' } };
     return data;
@@ -148,6 +158,12 @@ function iniciarSim(p: URLSearchParams) {
     { id: 4, tipo: 'duplicado', fecha: '2026-11-02', rubro: 'Tarjeta', titulo: 'Posible cargo duplicado', estado: 'validada', resuelta_en: '2026-11-03T10:00:00Z',
       detalle: { comercio: 'Comercio', monto: 5000, fechas: ['2026-11-01', '2026-11-02'] } },
   ];
+  if (p.get('anul') === '1') alertasSim.unshift(
+    { id: 7, tipo: 'anulacion', fecha: HOY, rubro: 'Transporte', titulo: 'Pago anulado: ya volvió a tu liquidez', estado: 'nueva', resuelta_en: null,
+      detalle: { etapa: 'revertido', monto: 7022, comercio: 'MERPAGO VIAJES PRUEBA', fecha_pago: HOY, fecha_anulacion: HOY, via: 'banco' } },
+    { id: 8, tipo: 'anulacion', fecha: HOY, rubro: 'Anulaciones', titulo: 'Se anuló un pago que no habías confirmado', estado: 'nueva', resuelta_en: null,
+      detalle: { etapa: 'sin_confirmar', monto: 1500, comercio: 'COMERCIO PRUEBA', fecha_pago: '2026-11-09', fecha_anulacion: '2026-11-09', via: 'banco' } }
+  );
   if (p.get('venc') === '1') alertasSim.unshift(
     { id: 5, tipo: 'vencimiento', fecha: HOY, rubro: 'Vencimientos', titulo: 'Gas vence el 13/11', estado: 'nueva', resuelta_en: null,
       detalle: { item: 'gas:1', tipo_pago: 'gas', nombre: 'Gas', vence: '2026-11-13', monto: 16013, etapa: 'pronto' } },

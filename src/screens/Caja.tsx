@@ -216,10 +216,15 @@ function Movimientos({ movs, hoy, nuevos, editar, borrar }: { movs: MovCaja[]; h
           <h2 class="dia">{etiquetaDia(g.fecha, hoy)}</h2>
           <ul class="rows">
             {g.items.map((m) => (
-              <li class={`mv${nuevos?.has(m.id) ? ' recien' : ''}`} data-mov={m.id}>
+              <li class={`mv${nuevos?.has(m.id) ? ' recien' : ''}${m.anulado_el ? ' anulado' : ''}`} data-mov={m.id}>
                 <span class="ic"><Icon n={iconoDe(m.grupo, m.subcat_id)} size={20} /></span>
-                <div class="ell"><div class="ell">{m.titulo}</div>{m.nota && m.nota !== m.titulo && <div class="small ell">{m.nota}</div>}</div>
-                <span class={`num nw amt${m.signo > 0 ? ' good' : ''}`}>{fmtMon(m.monto * m.signo, m.moneda)}</span>
+                <div class="ell"><div class="ell">{m.titulo}</div>
+                  {m.anulado_el
+                    ? <div class="small ell"><span class="tag-anulado">Anulado el {fmtDDMM(m.anulado_el)}</span>{m.nota && m.nota !== m.titulo && ' · ' + m.nota}</div>
+                    : m.nota && m.nota !== m.titulo && <div class="small ell">{m.nota}</div>}</div>
+                <span class={`num nw amt${m.monto * m.signo > 0 ? ' good' : ''}`}>
+                  {m.anulado_el ? <s aria-label={`${fmtMon(m.monto * m.signo, m.moneda)}, anulado`}>{fmtMon(m.monto * m.signo, m.moneda)}</s> : fmtMon(m.monto * m.signo, m.moneda)}
+                </span>
                 {m.editable ? (
                   <>
                     <button class="act" aria-label={`Editar ${m.titulo}`} onClick={() => editar(m)}><Icon n="lapiz" size={18} /></button>

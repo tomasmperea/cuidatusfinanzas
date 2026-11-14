@@ -156,6 +156,8 @@ export interface MovCaja {
   id: number; fecha: string; ts: string; monto: number; signo: number; moneda: string; cuenta_id: number;
   subcat_id: number | null; editable: boolean; nota: string | null; titulo: string; grupo: string;
   contra_cuenta_id: number | null; contra_monto: number | null;
+  /** reversa de un pago anulado (monto negativo, no se edita) / fecha en que se anuló este pago */
+  reversa?: boolean; anulado_el?: string | null;
 }
 export interface Pendiente {
   id: number; fecha: string; ts: string | null; monto: number; signo: number; descripcion: string | null;
@@ -270,7 +272,7 @@ export interface MetaInput { id?: number | null; nombre: string; objetivo: numbe
 export interface MetaSim { meta: Meta; otras: Array<{ id: number; nombre: string; pct: number }>; reserva: Reserva }
 
 // ---------- Avisos (campanita) ----------
-export type TipoAlerta = 'aumento' | 'suscripcion_nueva' | 'duplicado' | 'meta_desvio' | 'meta_en_riesgo' | 'metas_valle' | 'vencimiento';
+export type TipoAlerta = 'aumento' | 'suscripcion_nueva' | 'duplicado' | 'meta_desvio' | 'meta_en_riesgo' | 'metas_valle' | 'vencimiento' | 'anulacion';
 export type EstadoAlerta = 'nueva' | 'vista' | 'validada' | 'descartada';
 export interface Alerta {
   id: number; tipo: TipoAlerta; fecha: string; rubro: string | null; titulo: string; detalle: Record<string, any>;
